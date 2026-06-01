@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>康茂顺 ♥ 晏联佳</title>
+    <style>
+        :root {
+            --pink: #ff7eb3;
+            --rose: #ff758c;
+            --gold: #f9d56e;
+            --deep: #1a0a2e;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            background: #0a0015;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'STKaiti', 'KaiTi', 'Noto Serif SC', 'Georgia', serif;
+            overflow: hidden;
+            cursor: default;
+            user-select: none;
+        }
+
+        /* === 画布层 === */
+        canvas#bg {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+        }
+
+        /* === 花瓣容器 === */
+        .petal-layer {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none; z-index: 1;
+        }
+
+        /* === 主卡片 === */
+        .card {
+            position: relative; z-index: 10;
+            background: rgba(20, 5, 40, 0.5);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 120, 160, 0.25);
+            border-radius: 32px;
+            padding: 60px 70px;
+            text-align: center;
+            box-shadow:
+                0 0 60px rgba(255, 100, 150, 0.15),
+                0 0 120px rgba(180, 60, 120, 0.08),
+                inset 0 0 60px rgba(255, 150, 180, 0.03);
+            animation: cardEntry 1.8s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+            max-width: 90vw;
+        }
+
+        @keyframes cardEntry {
+            0%   { opacity: 0; transform: translateY(40px) scale(0.92); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* 顶部装饰线 */
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -1px; left: 15%; right: 15%;
+            height: 2px;
+            background: linear-gradient(90deg,
+                transparent, rgba(255,180,200,0.6),
+                rgba(255,120,160,0.9), rgba(255,180,200,0.6),
+                transparent);
+            border-radius: 1px;
+        }
+
+        .card::after {
+            content: '';
+            position: absolute;
+            bottom: -1px; left: 15%; right: 15%;
+            height: 2px;
+            background: linear-gradient(90deg,
+                transparent, rgba(255,180,200,0.6),
+                rgba(255,120,160,0.9), rgba(255,180,200,0.6),
+                transparent);
+            border-radius: 1px;
+        }
+
+        /* === 爱心 === */
+        .heart-stage {
+            position: relative;
+            margin-bottom: 35px;
+            display: inline-block;
+        }
+
+        .heart-ring {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 160px; height: 160px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 150, 170, 0.2);
+            animation: ringPulse 2.5s ease-in-out infinite;
+        }
+
+        .heart-ring:nth-child(2) {
+            width: 200px; height: 200px;
+            animation-delay: 0.6s;
+            border-color: rgba(255, 150, 170, 0.1);
+        }
+
+        .heart-ring:nth-child(3) {
+            width: 250px; height: 250px;
+            animation-delay: 1.2s;
+            border-color: rgba(255, 150, 170, 0.06);
+        }
+
+        @keyframes ringPulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+            50%      { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+        }
+
+        .heart-svg {
+            width: 100px;
+            height: 100px;
+            position: relative;
+            z-index: 2;
+            animation: heartbeat 1s ease-in-out infinite;
+            filter: drop-shadow(0 0 25px rgba(255, 90, 130, 0.7))
+                    drop-shadow(0 0 50px rgba(255, 70, 110, 0.4));
+        }
+
+        @keyframes heartbeat {
+            0%   { transform: scale(1); }
+            14%  { transform: scale(1.18); }
+            28%  { transform: scale(1); }
+            42%  { transform: scale(1.14); }
+            56%  { transform: scale(1); }
+            100% { transform: scale(1); }
+        }
+
+        /* === 主标题 === */
+        .title {
+            font-size: 2.4em;
+            letter-spacing: 6px;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .title .name-nan {
+            color: #ffb3c6;
+            text-shadow: 0 0 20px rgba(255, 150, 180, 0.6);
+        }
+
+        .title .heart-text {
+            color: #ff6080;
+            text-shadow: 0 0 30px rgba(255, 90, 130, 0.8);
+            animation: loveGlow 1.5s ease-in-out infinite;
+        }
+
+        .title .name-bing {
+            color: #ffccd5;
+            text-shadow: 0 0 20px rgba(255, 170, 190, 0.6);
+        }
+
+        @keyframes loveGlow {
+            0%, 100% { text-shadow: 0 0 20px rgba(255, 90, 130, 0.6); }
+            50% { text-shadow: 0 0 50px rgba(255, 60, 110, 1), 0 0 100px rgba(255, 90, 130, 0.5); }
+        }
+
+        /* === 副标题 === */
+        .subtitle {
+            font-size: 1.5em;
+            color: #e8bfcc;
+            letter-spacing: 5px;
+            text-shadow: 0 0 15px rgba(255, 170, 200, 0.5);
+            animation: subtitleFade 3s ease-in-out infinite;
+        }
+
+        @keyframes subtitleFade {
+            0%, 100% { opacity: 0.75; }
+            50%      { opacity: 1; }
+        }
+
+        /* === 分隔线 === */
+        .divider {
+            width: 120px; height: 1px;
+            margin: 28px auto;
+            background: linear-gradient(90deg,
+                transparent, rgba(255, 160, 190, 0.5),
+                rgba(255, 180, 200, 0.8),
+                rgba(255, 160, 190, 0.5), transparent);
+        }
+
+        /* === 誓言行 === */
+        .vows {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            color: #d4a6b4;
+            font-size: 1em;
+            letter-spacing: 3px;
+            opacity: 0.85;
+        }
+
+        .vows span {
+            animation: vowIn 0.8s ease-out forwards;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        .vows span:nth-child(1) { animation-delay: 0.6s; }
+        .vows span:nth-child(2) { animation-delay: 0.9s; }
+        .vows span:nth-child(3) { animation-delay: 1.2s; }
+
+        @keyframes vowIn {
+            to { opacity: 0.85; transform: translateY(0); }
+        }
+
+        /* === 花瓣 === */
+        .petal {
+            position: fixed;
+            pointer-events: none;
+            z-index: 2;
+            font-size: 22px;
+            animation: petalFall var(--fall-time) linear infinite;
+            animation-delay: var(--fall-delay);
+            left: var(--x);
+            top: -40px;
+            opacity: 0;
+        }
+
+        @keyframes petalFall {
+            0%   { opacity: 0; transform: translateY(0) rotate(0deg) translateX(0); }
+            5%   { opacity: 0.9; }
+            80%  { opacity: 0.4; }
+            100% { opacity: 0; transform: translateY(105vh) rotate(var(--spin)) translateX(var(--drift)); }
+        }
+
+        /* === 情诗 === */
+        .poem-section {
+            margin-top: 20px;
+            animation: poemIn 1.2s ease-out forwards;
+            opacity: 0;
+            animation-delay: 1.5s;
+        }
+
+        @keyframes poemIn {
+            to { opacity: 1; }
+        }
+
+        .poem-divider {
+            width: 60px; height: 1px;
+            margin: 20px auto;
+            background: linear-gradient(90deg,
+                transparent, rgba(255, 170, 200, 0.4),
+                rgba(255, 190, 210, 0.6),
+                rgba(255, 170, 200, 0.4), transparent);
+        }
+
+        .poem-text {
+            font-size: 1.05em;
+            color: #e0b8c6;
+            letter-spacing: 3px;
+            line-height: 1.8;
+            text-shadow: 0 0 8px rgba(255, 160, 190, 0.3);
+        }
+
+        .poem-author {
+            font-size: 0.85em;
+            color: #c090a0;
+            letter-spacing: 2px;
+            margin-top: 6px;
+            opacity: 0.7;
+        }
+
+        /* === 音乐播放器按钮 === */
+        .music-toggle {
+            position: fixed; bottom: 30px; right: 30px;
+            z-index: 100;
+            width: 55px; height: 55px;
+            border-radius: 50%;
+            background: rgba(20, 5, 40, 0.55);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 120, 160, 0.35);
+            color: #ffb3c6;
+            font-size: 26px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 25px rgba(255, 100, 150, 0.25), 0 0 50px rgba(180, 60, 120, 0.1);
+            transition: all 0.35s ease;
+            animation: musicPulse 2.5s ease-in-out infinite;
+        }
+        .music-toggle:hover {
+            border-color: rgba(255, 120, 160, 0.7);
+            box-shadow: 0 0 40px rgba(255, 100, 150, 0.45), 0 0 80px rgba(255, 70, 120, 0.2);
+            color: #ff6080;
+            transform: scale(1.08);
+        }
+        .music-toggle.playing {
+            animation: musicPlaying 1s ease-in-out infinite;
+            border-color: rgba(255, 120, 160, 0.7);
+            box-shadow: 0 0 35px rgba(255, 100, 150, 0.5), 0 0 70px rgba(255, 70, 120, 0.25);
+        }
+        @keyframes musicPulse {
+            0%, 100% { box-shadow: 0 0 25px rgba(255, 100, 150, 0.25), 0 0 50px rgba(180, 60, 120, 0.1); }
+            50% { box-shadow: 0 0 35px rgba(255, 100, 150, 0.4), 0 0 65px rgba(200, 70, 130, 0.18); }
+        }
+        @keyframes musicPlaying {
+            0%, 100% { transform: scale(1); }
+            25% { transform: scale(1.06); }
+            75% { transform: scale(1.03); }
+        }
+
+        /* === 音乐播放器面板 === */
+        .music-panel {
+            position: fixed; bottom: 100px; right: 30px;
+            z-index: 99;
+            width: 320px;
+            background: rgba(20, 5, 40, 0.6);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 120, 160, 0.3);
+            border-radius: 22px;
+            padding: 24px;
+            box-shadow: 0 0 50px rgba(255, 100, 150, 0.2), 0 0 100px rgba(180, 60, 120, 0.1);
+            transform: translateY(20px) scale(0.9);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
+            color: #e8bfcc;
+        }
+        .music-panel.open {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .music-panel-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 150, 170, 0.15);
+        }
+        .music-panel-title {
+            font-size: 0.95em;
+            letter-spacing: 2px;
+            color: #ffb3c6;
+            text-shadow: 0 0 10px rgba(255, 150, 180, 0.4);
+        }
+        .music-panel-close {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: rgba(255, 120, 160, 0.1);
+            border: 1px solid rgba(255, 150, 170, 0.2);
+            color: #d4a6b4;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s;
+        }
+        .music-panel-close:hover {
+            background: rgba(255, 120, 160, 0.2);
+            color: #ff6080;
+        }
+
+        /* 当前歌曲信息 */
+        .music-now {
+            display: flex; align-items: center; gap: 14px;
+            margin-bottom: 16px;
+            padding: 12px 14px;
+            background: rgba(255, 120, 160, 0.06);
+            border-radius: 14px;
+            border: 1px solid rgba(255, 150, 180, 0.1);
+        }
+        .music-cover-icon {
+            width: 50px; height: 50px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(255, 90, 130, 0.3), rgba(180, 60, 160, 0.2));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+            animation: coverSpin 4s linear infinite;
+            animation-play-state: paused;
+        }
+        .music-cover-icon.playing { animation-play-state: running; }
+        @keyframes coverSpin {
+            to { transform: rotate(360deg); }
+        }
+        .music-now-info { flex: 1; min-width: 0; }
+        .music-now-name {
+            font-size: 0.95em; font-weight: bold;
+            color: #ffb3c6;
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px rgba(255, 150, 180, 0.4);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .music-now-artist {
+            font-size: 0.75em;
+            color: #c090a0;
+            letter-spacing: 1px;
+            margin-top: 2px;
+        }
+
+        /* 进度条 */
+        .music-progress-wrap { margin-bottom: 14px; }
+        .music-progress-bar {
+            width: 100%; height: 4px;
+            background: rgba(255, 150, 180, 0.12);
+            border-radius: 2px;
+            cursor: pointer;
+            position: relative;
+            overflow: visible;
+        }
+        .music-progress-fill {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, #ff6080, #ffb3c6);
+            border-radius: 2px;
+            position: relative;
+            transition: width 0.1s linear;
+        }
+        .music-progress-fill::after {
+            content: '';
+            position: absolute; right: -5px; top: -3px;
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: #ffb3c6;
+            box-shadow: 0 0 8px rgba(255, 120, 160, 0.7);
+            opacity: 0; transition: opacity 0.2s;
+        }
+        .music-progress-bar:hover .music-progress-fill::after { opacity: 1; }
+        .music-time {
+            display: flex; justify-content: space-between;
+            font-size: 0.65em; color: #a07888;
+            margin-top: 4px; letter-spacing: 1px;
+        }
+
+        /* 控制按钮 */
+        .music-ctrls {
+            display: flex; align-items: center; justify-content: center;
+            gap: 18px; margin-bottom: 16px;
+        }
+        .music-ctrl-btn {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            background: rgba(255, 120, 160, 0.08);
+            border: 1px solid rgba(255, 150, 170, 0.2);
+            color: #e0b8c6;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s;
+        }
+        .music-ctrl-btn:hover {
+            background: rgba(255, 120, 160, 0.2);
+            border-color: rgba(255, 120, 160, 0.5);
+            color: #ff6080;
+            box-shadow: 0 0 15px rgba(255, 100, 150, 0.3);
+        }
+        .music-ctrl-play {
+            width: 50px; height: 50px;
+            font-size: 22px;
+            background: linear-gradient(135deg, rgba(255, 90, 130, 0.3), rgba(200, 50, 120, 0.2));
+            border-color: rgba(255, 120, 160, 0.4);
+            box-shadow: 0 0 20px rgba(255, 90, 130, 0.25);
+        }
+        .music-ctrl-play:hover {
+            background: linear-gradient(135deg, rgba(255, 90, 130, 0.5), rgba(200, 50, 120, 0.35));
+            box-shadow: 0 0 35px rgba(255, 90, 130, 0.45);
+        }
+
+        /* 音量 */
+        .music-vol {
+            display: flex; align-items: center; gap: 8px;
+            margin-bottom: 14px; padding: 0 4px;
+        }
+        .music-vol-icon { font-size: 14px; cursor: pointer; }
+        .music-vol-slider {
+            flex: 1; height: 3px;
+            -webkit-appearance: none; appearance: none;
+            background: rgba(255, 150, 180, 0.15);
+            border-radius: 2px; outline: none;
+            cursor: pointer;
+        }
+        .music-vol-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            background: #ffb3c6;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(255, 120, 160, 0.5);
+        }
+
+        /* 播放列表 */
+        .music-playlist { max-height: 180px; overflow-y: auto; }
+        .music-playlist::-webkit-scrollbar { width: 3px; }
+        .music-playlist::-webkit-scrollbar-thumb {
+            background: rgba(255, 150, 180, 0.25); border-radius: 2px;
+        }
+        .music-playlist-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 12px; border-radius: 10px;
+            cursor: pointer; transition: all 0.25s;
+            font-size: 0.8em; letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+        .music-playlist-item:hover {
+            background: rgba(255, 120, 160, 0.1);
+        }
+        .music-playlist-item.active {
+            background: rgba(255, 120, 160, 0.15);
+            border: 1px solid rgba(255, 150, 180, 0.2);
+        }
+        .music-playlist-item.active .music-pl-name { color: #ffb3c6; }
+        .music-pl-num {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: rgba(255, 120, 160, 0.1);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.7em; flex-shrink: 0;
+            color: #c090a0;
+        }
+        .music-playlist-item.active .music-pl-num {
+            background: rgba(255, 90, 130, 0.3);
+            color: #ff6080;
+        }
+        .music-pl-info { flex: 1; min-width: 0; }
+        .music-pl-name {
+            color: #d4a6b4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .music-pl-artist { font-size: 0.75em; color: #a07888; margin-top: 1px; }
+        .music-pl-badge {
+            font-size: 0.6em; padding: 2px 8px; border-radius: 10px;
+            background: linear-gradient(135deg, rgba(255, 90, 130, 0.3), rgba(200, 50, 120, 0.2));
+            color: #ffb3c6; letter-spacing: 1px; flex-shrink: 0;
+        }
+        .music-pl-playing {
+            width: 16px; height: 16px; flex-shrink: 0;
+            display: flex; align-items: flex-end; gap: 2px; justify-content: center;
+        }
+        .music-pl-playing .bar {
+            width: 2px; background: #ff6080;
+            border-radius: 1px; animation: barAnim 0.8s ease-in-out infinite;
+        }
+        .music-pl-playing .bar:nth-child(1) { height: 6px; animation-delay: 0s; }
+        .music-pl-playing .bar:nth-child(2) { height: 12px; animation-delay: 0.15s; }
+        .music-pl-playing .bar:nth-child(3) { height: 8px; animation-delay: 0.3s; }
+        .music-pl-playing .bar:nth-child(4) { height: 14px; animation-delay: 0.45s; }
+        @keyframes barAnim {
+            0%, 100% { transform: scaleY(0.5); opacity: 0.5; }
+            50% { transform: scaleY(1); opacity: 1; }
+        }
+
+        /* 响应式 */
+        @media (max-width: 640px) {
+            .card { padding: 40px 30px; border-radius: 24px; }
+            .title { font-size: 1.5em; letter-spacing: 3px; }
+            .subtitle { font-size: 1.1em; letter-spacing: 2px; }
+            .heart-svg { width: 70px; height: 70px; }
+            .heart-ring { width: 120px !important; height: 120px !important; }
+            .heart-ring:nth-child(2) { width: 150px !important; height: 150px !important; }
+            .heart-ring:nth-child(3) { width: 190px !important; height: 190px !important; }
+            .music-panel { width: 280px; right: 10px; bottom: 95px; padding: 18px; }
+            .music-toggle { right: 15px; bottom: 20px; width: 48px; height: 48px; font-size: 22px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Canvas 星空背景 -->
+    <canvas id="bg"></canvas>
+
+    <!-- 花瓣层 -->
+    <div class="petal-layer" id="petals"></div>
+
+    <!-- 主卡片 -->
+    <div class="card">
+        <div class="heart-stage">
+            <div class="heart-ring"></div>
+            <div class="heart-ring"></div>
+            <div class="heart-ring"></div>
+            <svg class="heart-svg" viewBox="0 0 32 32">
+                <defs>
+                    <radialGradient id="hg" cx="50%" cy="30%" r="60%">
+                        <stop offset="0%" stop-color="#ff6080"/>
+                        <stop offset="100%" stop-color="#cc2050"/>
+                    </radialGradient>
+                    <filter id="hglow">
+                        <feGaussianBlur stdDeviation="0.8" result="blur"/>
+                        <feMerge>
+                            <feMergeNode in="blur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>
+                <path d="M16 28 C16 28, 4 20, 4 12 C4 7, 8 4, 12 4 C14.5 4, 16 5.5, 16 7 C16 5.5, 17.5 4, 20 4 C24 4, 28 7, 28 12 C28 20, 16 28, 16 28Z"
+                      fill="url(#hg)" filter="url(#hglow)"/>
+            </svg>
+        </div>
+
+        <p class="title">
+            <span class="name-nan">康茂顺</span>
+            <span class="heart-text">&nbsp;永远永远喜欢&nbsp;</span>
+            <span class="name-bing">晏联佳</span>
+        </p>
+        <p class="subtitle">我们要永远永远在一起</p>
+
+        <div class="divider"></div>
+
+        <div class="vows">
+            <span>♡ 不论春夏秋冬，不论时光流转</span>
+            <span>♡ 你是我心里最温暖的光</span>
+            <span>♡ 永远永远，不离不弃</span>
+        </div>
+
+        <div class="poem-section">
+            <div class="poem-divider"></div>
+            <p class="poem-text" id="poem">loading...</p>
+            <p class="poem-author" id="poem-author"></p>
+        </div>
+    </div>
+
+    <!-- ========== 音乐播放器 ========== -->
+    <!-- 浮动按钮 -->
+    <button class="music-toggle" id="musicToggle" title="🎵 打开音乐播放器">♪</button>
+
+    <!-- 播放器面板 -->
+    <div class="music-panel" id="musicPanel">
+        <div class="music-panel-header">
+            <span class="music-panel-title">🎵 小情歌播放器</span>
+            <button class="music-panel-close" id="musicClose">✕</button>
+        </div>
+
+        <!-- 当前播放 -->
+        <div class="music-now">
+            <div class="music-cover-icon" id="musicCover">🎵</div>
+            <div class="music-now-info">
+                <div class="music-now-name" id="nowName">偏爱</div>
+                <div class="music-now-artist" id="nowArtist">张芸京</div>
+            </div>
+        </div>
+
+        <!-- 进度条 -->
+        <div class="music-progress-wrap">
+            <div class="music-progress-bar" id="progressBar">
+                <div class="music-progress-fill" id="progressFill"></div>
+            </div>
+            <div class="music-time">
+                <span id="curTime">00:00</span>
+                <span id="durTime">00:00</span>
+            </div>
+        </div>
+
+        <!-- 控制按钮 -->
+        <div class="music-ctrls">
+            <button class="music-ctrl-btn" id="prevBtn" title="上一首">⏮</button>
+            <button class="music-ctrl-btn music-ctrl-play" id="playBtn" title="播放/暂停">▶</button>
+            <button class="music-ctrl-btn" id="nextBtn" title="下一首">⏭</button>
+        </div>
+
+        <!-- 音量 -->
+        <div class="music-vol">
+            <span class="music-vol-icon" id="volIcon">🔊</span>
+            <input type="range" class="music-vol-slider" id="volSlider" min="0" max="100" value="65">
+        </div>
+
+        <!-- 播放列表 -->
+        <div class="music-playlist" id="playlist"></div>
+    </div>
+
+    <script>
+        // ========== Canvas 星空 + 极光 + 流星 ==========
+        const canvas = document.getElementById('bg');
+        const ctx = canvas.getContext('2d');
+        let W, H;
+
+        function resize() {
+            W = canvas.width  = window.innerWidth;
+            H = canvas.height = window.innerHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        // 星星
+        const stars = [];
+        for (let i = 0; i < 200; i++) {
+            stars.push({
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * window.innerHeight,
+                r: Math.random() * 2.2 + 0.5,
+                phase: Math.random() * Math.PI * 2,
+                twinkleSpeed: Math.random() * 0.02 + 0.005,
+            });
+        }
+
+        // 极光
+        function drawAurora(time) {
+            ctx.save();
+            ctx.globalAlpha = 0.12;
+            for (let wave = 0; wave < 3; wave++) {
+                const baseY = H * (0.2 + wave * 0.12);
+                const gradient = ctx.createLinearGradient(0, baseY - 60, 0, baseY + 60);
+                const c = [
+                    [255, 120, 180],
+                    [180, 80, 200],
+                    [100, 140, 220],
+                ][wave];
+                gradient.addColorStop(0, 'transparent');
+                gradient.addColorStop(0.4, `rgba(${c[0]},${c[1]},${c[2]},0.5)`);
+                gradient.addColorStop(0.6, `rgba(${c[0]},${c[1]},${c[2]},0.5)`);
+                gradient.addColorStop(1, 'transparent');
+
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.moveTo(0, baseY);
+                for (let x = 0; x <= W; x += 20) {
+                    const y = baseY
+                        + Math.sin(x * 0.003 + time * 0.0004 + wave * 2) * 50
+                        + Math.sin(x * 0.007 + time * 0.0007) * 30;
+                    ctx.lineTo(x, y);
+                }
+                ctx.lineTo(W, baseY + 60);
+                ctx.lineTo(0, baseY + 60);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function drawStars(time) {
+            for (const s of stars) {
+                const alpha = 0.3 + 0.7 * Math.abs(Math.sin(time * s.twinkleSpeed + s.phase));
+                ctx.fillStyle = `rgba(255,220,240,${alpha})`;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                ctx.fill();
+                if (s.r > 1.6 && alpha > 0.75) {
+                    ctx.fillStyle = `rgba(255,180,210,${alpha * 0.25})`;
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.r * 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // 流星
+        const meteors = [];
+        function spawnMeteor() {
+            meteors.push({
+                x: Math.random() * W * 0.8,
+                y: Math.random() * H * 0.3,
+                len: Math.random() * 100 + 60,
+                speed: Math.random() * 5 + 4,
+                life: 1,
+            });
+        }
+        setInterval(() => {
+            if (meteors.length < 3 && Math.random() < 0.3) spawnMeteor();
+        }, 2000);
+
+        function drawMeteors() {
+            for (let i = meteors.length - 1; i >= 0; i--) {
+                const m = meteors[i];
+                m.x += m.speed * 2.5;
+                m.y += m.speed;
+                m.life -= 0.015;
+                if (m.life <= 0) { meteors.splice(i, 1); continue; }
+                const grad = ctx.createLinearGradient(m.x, m.y, m.x - m.len, m.y - m.len * 0.55);
+                grad.addColorStop(0, `rgba(255,255,255,${m.life})`);
+                grad.addColorStop(1, 'rgba(255,200,220,0)');
+                ctx.strokeStyle = grad;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(m.x, m.y);
+                ctx.lineTo(m.x - m.len, m.y - m.len * 0.55);
+                ctx.stroke();
+            }
+        }
+
+        function animate(timestamp) {
+            ctx.clearRect(0, 0, W, H);
+
+            const bgGrad = ctx.createRadialGradient(W / 2, H / 3, 0, W / 2, H / 2, Math.max(W, H) * 0.8);
+            bgGrad.addColorStop(0, '#1a0a30');
+            bgGrad.addColorStop(0.5, '#0d0020');
+            bgGrad.addColorStop(1, '#050010');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, W, H);
+
+            drawAurora(timestamp);
+            drawStars(timestamp);
+            drawMeteors();
+            requestAnimationFrame(animate);
+        }
+        requestAnimationFrame(animate);
+        spawnMeteor();
+
+        // ========== 花瓣 ==========
+        const petalsContainer = document.getElementById('petals');
+        const petalChars = ['🌸', '💮', '🌷', '🩷', '♥', '✨', '💫', '🪷'];
+        for (let i = 0; i < 35; i++) {
+            const el = document.createElement('span');
+            el.classList.add('petal');
+            el.textContent = petalChars[Math.floor(Math.random() * petalChars.length)];
+            el.style.setProperty('--x', Math.random() * 100 + '%');
+            el.style.setProperty('--fall-time', (Math.random() * 8 + 10) + 's');
+            el.style.setProperty('--fall-delay', (Math.random() * 12) + 's');
+            el.style.setProperty('--spin', (Math.random() * 500 + 200) + 'deg');
+            el.style.setProperty('--drift', (Math.random() * 120 - 60) + 'px');
+            petalsContainer.appendChild(el);
+        }
+
+        // ========== 随机情诗 ==========
+        const poems = [
+            { text: '愿我如星君如月，夜夜流光相皎洁', author: '—— 范成大《车遥遥篇》' },
+            { text: '玲珑骰子安红豆，入骨相思知不知', author: '—— 温庭筠《南歌子》' },
+            { text: '山有木兮木有枝，心悦君兮君不知', author: '—— 佚名《越人歌》' },
+            { text: '执子之手，与子偕老', author: '—— 《诗经·邶风·击鼓》' },
+            { text: '愿得一人心，白首不相离', author: '—— 卓文君《白头吟》' },
+            { text: '两情若是久长时，又岂在朝朝暮暮', author: '—— 秦观《鹊桥仙》' },
+            { text: '只缘感君一回顾，使我思君朝与暮', author: '—— 佚名《古相思曲》' },
+            { text: '天涯地角有穷时，只有相思无尽处', author: '—— 晏殊《玉楼春》' },
+            { text: '死生契阔，与子成说', author: '—— 《诗经·邶风·击鼓》' },
+            { text: '衣带渐宽终不悔，为伊消得人憔悴', author: '—— 柳永《蝶恋花》' },
+            { text: '长相思兮长相忆，短相思兮无穷极', author: '—— 李白《秋风词》' },
+            { text: '曾经沧海难为水，除却巫山不是云', author: '—— 元稹《离思》' },
+            { text: '身无彩凤双飞翼，心有灵犀一点通', author: '—— 李商隐《无题》' },
+            { text: '金风玉露一相逢，便胜却人间无数', author: '—— 秦观《鹊桥仙》' },
+            { text: '此情无计可消除，才下眉头，却上心头', author: '—— 李清照《一剪梅》' },
+            { text: '世间无限丹青手，一片伤心画不成', author: '—— 高蟾《金陵晚望》' },
+            { text: '众里寻他千百度，蓦然回首，那人却在灯火阑珊处', author: '—— 辛弃疾《青玉案·元夕》' },
+            { text: '相恨不如潮有信，相思始觉海非深', author: '—— 白居易《浪淘沙》' },
+            { text: '愿君多采撷，此物最相思', author: '—— 王维《相思》' },
+            { text: '春蚕到死丝方尽，蜡炬成灰泪始干', author: '—— 李商隐《无题》' },
+        ];
+
+        const poemEl = document.getElementById('poem');
+        const authorEl = document.getElementById('poem-author');
+        const randomPoem = poems[Math.floor(Math.random() * poems.length)];
+        if (poemEl && authorEl) {
+            poemEl.textContent = randomPoem.text;
+            authorEl.textContent = randomPoem.author;
+        }
+
+        // ========== 点击爱心特效 ==========
+        const clickHeartStyle = document.createElement('style');
+        clickHeartStyle.textContent = `
+            @keyframes clickHeart {
+                0%   { opacity: 1; transform: translateY(0) scale(1); }
+                100% { opacity: 0; transform: translateY(-120px) scale(1.8); }
+            }
+        `;
+        document.head.appendChild(clickHeartStyle);
+
+        document.addEventListener('click', (e) => {
+            const heart = document.createElement('span');
+            heart.textContent = '♥';
+            heart.style.cssText = `
+                position: fixed; pointer-events: none; z-index: 9999;
+                left: ${e.clientX - 14}px; top: ${e.clientY - 14}px;
+                font-size: 28px; color: #ff6080;
+                text-shadow: 0 0 15px rgba(255,90,130,0.8);
+                animation: clickHeart 1.2s ease-out forwards;
+            `;
+            document.body.appendChild(heart);
+            heart.addEventListener('animationend', () => heart.remove());
+        });
+
+        // ========== 音乐播放器 ==========
+        const playlist = [
+            { name: '偏爱', artist: '张芸京', id: '86369', icon: '💖', featured: true },
+            { name: '小情歌', artist: '苏打绿', id: '353113', icon: '🌿' },
+            { name: '慢慢喜欢你', artist: '莫文蔚', id: '862100931', icon: '🌹' },
+            { name: '有点甜', artist: '汪苏泷 & By2', id: '165340', icon: '🍬' },
+        ];
+
+        // 网易云音乐外链 (会302跳转到实际音频)
+        function getAudioUrl(songId) {
+            return `https://music.163.com/song/media/outer/url?id=${songId}.mp3`;
+        }
+
+        // DOM 元素
+        const audio = new Audio();
+        const musicToggle = document.getElementById('musicToggle');
+        const musicPanel = document.getElementById('musicPanel');
+        const musicClose = document.getElementById('musicClose');
+        const playBtn = document.getElementById('playBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const curTimeEl = document.getElementById('curTime');
+        const durTimeEl = document.getElementById('durTime');
+        const volSlider = document.getElementById('volSlider');
+        const volIcon = document.getElementById('volIcon');
+        const nowName = document.getElementById('nowName');
+        const nowArtist = document.getElementById('nowArtist');
+        const musicCover = document.getElementById('musicCover');
+        const playlistEl = document.getElementById('playlist');
+
+        let currentIndex = 0;
+        let isPlaying = false;
+        let panelOpen = false;
+
+        audio.volume = 0.65;
+
+        // 格式化时间
+        function fmtTime(s) {
+            if (isNaN(s) || !isFinite(s)) return '00:00';
+            const m = Math.floor(s / 60);
+            const sec = Math.floor(s % 60);
+            return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+        }
+
+        // 加载并播放指定索引的歌曲
+        function loadSong(index) {
+            const song = playlist[index];
+            nowName.textContent = song.name;
+            nowArtist.textContent = song.artist;
+            musicCover.textContent = song.icon || '🎵';
+            document.title = `♫ ${song.name} - ${song.artist} | 康茂顺 ♥ 晏联佳`;
+            audio.src = getAudioUrl(song.id);
+            audio.load();
+            updatePlaylistActive();
+            if (isPlaying) {
+                const playPromise = audio.play();
+                if (playPromise) playPromise.catch(() => {});
+            }
+        }
+
+        function playSong(index) {
+            if (index === currentIndex && isPlaying) return;
+            currentIndex = index;
+            loadSong(index);
+            audio.play().then(() => {
+                setPlaying(true);
+            }).catch(() => {
+                // 如果在线音频加载失败，静默处理
+                setPlaying(false);
+            });
+        }
+
+        function setPlaying(state) {
+            isPlaying = state;
+            if (state) {
+                playBtn.textContent = '⏸';
+                musicToggle.classList.add('playing');
+                musicToggle.textContent = '🎵';
+                musicCover.classList.add('playing');
+            } else {
+                playBtn.textContent = '▶';
+                musicToggle.classList.remove('playing');
+                musicToggle.textContent = '♪';
+                musicCover.classList.remove('playing');
+            }
+            updatePlaylistActive();
+        }
+
+        function togglePlay() {
+            if (!audio.src || audio.src === window.location.href) {
+                loadSong(currentIndex);
+                audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+                return;
+            }
+            if (isPlaying) {
+                audio.pause();
+                setPlaying(false);
+            } else {
+                audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+            }
+        }
+
+        function nextSong() {
+            currentIndex = (currentIndex + 1) % playlist.length;
+            loadSong(currentIndex);
+            if (isPlaying) {
+                audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+            }
+        }
+
+        function prevSong() {
+            currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
+            loadSong(currentIndex);
+            if (isPlaying) {
+                audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+            }
+        }
+
+        // 进度条
+        audio.addEventListener('timeupdate', () => {
+            const pct = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
+            progressFill.style.width = pct + '%';
+            curTimeEl.textContent = fmtTime(audio.currentTime);
+        });
+
+        audio.addEventListener('loadedmetadata', () => {
+            durTimeEl.textContent = fmtTime(audio.duration);
+        });
+
+        audio.addEventListener('ended', () => {
+            nextSong();
+        });
+
+        audio.addEventListener('play', () => setPlaying(true));
+        audio.addEventListener('pause', () => setPlaying(false));
+        audio.addEventListener('error', () => {
+            // 加载失败时静默处理
+            setPlaying(false);
+        });
+
+        progressBar.addEventListener('click', (e) => {
+            if (!audio.duration) return;
+            const rect = progressBar.getBoundingClientRect();
+            const pct = (e.clientX - rect.left) / rect.width;
+            audio.currentTime = pct * audio.duration;
+        });
+
+        // 音量
+        volSlider.addEventListener('input', () => {
+            audio.volume = volSlider.value / 100;
+            const v = audio.volume;
+            if (v === 0) volIcon.textContent = '🔇';
+            else if (v < 0.4) volIcon.textContent = '🔈';
+            else if (v < 0.7) volIcon.textContent = '🔉';
+            else volIcon.textContent = '🔊';
+        });
+        volIcon.addEventListener('click', () => {
+            if (audio.volume > 0) {
+                audio.volume = 0;
+                volSlider.value = 0;
+                volIcon.textContent = '🔇';
+            } else {
+                audio.volume = 0.65;
+                volSlider.value = 65;
+                volIcon.textContent = '🔊';
+            }
+        });
+
+        // 播放列表 UI
+        function buildPlaylist() {
+            playlistEl.innerHTML = '';
+            playlist.forEach((song, i) => {
+                const item = document.createElement('div');
+                item.classList.add('music-playlist-item');
+                if (i === currentIndex) item.classList.add('active');
+                item.innerHTML = `
+                    <span class="music-pl-num">${i + 1}</span>
+                    <span class="music-pl-info">
+                        <div class="music-pl-name">${song.name}</div>
+                        <div class="music-pl-artist">${song.artist}</div>
+                    </span>
+                    ${song.featured ? '<span class="music-pl-badge">主打</span>' : ''}
+                    ${i === currentIndex && isPlaying ? '<span class="music-pl-playing"><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>' : ''}
+                `;
+                item.addEventListener('click', () => {
+                    if (i === currentIndex) { togglePlay(); return; }
+                    currentIndex = i;
+                    loadSong(i);
+                    audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+                });
+                playlistEl.appendChild(item);
+            });
+        }
+
+        function updatePlaylistActive() {
+            const items = playlistEl.querySelectorAll('.music-playlist-item');
+            items.forEach((item, i) => {
+                item.classList.toggle('active', i === currentIndex);
+                // update playing indicator
+                const indicator = item.querySelector('.music-pl-playing');
+                if (i === currentIndex && isPlaying) {
+                    if (!indicator) {
+                        const span = document.createElement('span');
+                        span.classList.add('music-pl-playing');
+                        span.innerHTML = '<span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>';
+                        item.appendChild(span);
+                    }
+                } else if (indicator && (i !== currentIndex || !isPlaying)) {
+                    indicator.remove();
+                }
+            });
+        }
+
+        buildPlaylist();
+
+        // 面板开关
+        function togglePanel() {
+            panelOpen = !panelOpen;
+            musicPanel.classList.toggle('open', panelOpen);
+            musicToggle.textContent = panelOpen ? '✕' : (isPlaying ? '🎵' : '♪');
+        }
+
+        musicToggle.addEventListener('click', togglePanel);
+        musicClose.addEventListener('click', () => {
+            panelOpen = false;
+            musicPanel.classList.remove('open');
+            musicToggle.textContent = isPlaying ? '🎵' : '♪';
+        });
+
+        // 按钮事件
+        playBtn.addEventListener('click', togglePlay);
+        nextBtn.addEventListener('click', nextSong);
+        prevBtn.addEventListener('click', prevSong);
+
+        // 键盘快捷键
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            switch (e.code) {
+                case 'Space': e.preventDefault(); togglePlay(); break;
+                case 'ArrowRight': e.preventDefault(); nextSong(); break;
+                case 'ArrowLeft': e.preventDefault(); prevSong(); break;
+                case 'KeyM': e.preventDefault(); togglePanel(); break;
+            }
+        });
+
+        // 初始化：预加载第一首歌（偏爱），但不自动播放
+        loadSong(0);
+        console.log('🎵 小情歌播放器已就绪 | 主打: 偏爱 - 张芸京 | 按空格键播放，按 M 键开关面板');
+    </script>
+</body>
+</html>
