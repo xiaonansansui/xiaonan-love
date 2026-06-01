@@ -437,6 +437,17 @@
             margin-top: 4px; letter-spacing: 1px;
         }
 
+        /* 网易云 iframe */
+        .music-iframe-wrap {
+            margin-bottom: 14px; border-radius: 10px; overflow: hidden;
+            background: rgba(255,120,160,0.04);
+            border: 1px solid rgba(255,150,170,0.12);
+            height: 52px;
+        }
+        .music-iframe-wrap iframe {
+            display: block;
+        }
+
         /* 控制按钮 */
         .music-ctrls {
             display: flex; align-items: center; justify-content: center;
@@ -633,37 +644,29 @@
             <button class="music-panel-close" id="musicClose">✕</button>
         </div>
 
-        <!-- 当前播放 -->
+        <!-- 当前播放信息 -->
         <div class="music-now">
-            <div class="music-cover-icon" id="musicCover">🎵</div>
+            <div class="music-cover-icon" id="musicCover">💖</div>
             <div class="music-now-info">
                 <div class="music-now-name" id="nowName">偏爱</div>
                 <div class="music-now-artist" id="nowArtist">张芸京</div>
             </div>
         </div>
 
-        <!-- 进度条 -->
-        <div class="music-progress-wrap">
-            <div class="music-progress-bar" id="progressBar">
-                <div class="music-progress-fill" id="progressFill"></div>
-            </div>
-            <div class="music-time">
-                <span id="curTime">00:00</span>
-                <span id="durTime">00:00</span>
-            </div>
+        <!-- 网易云官方 iframe 播放器 -->
+        <div class="music-iframe-wrap">
+            <iframe id="musicIframe"
+                frameborder="no" border="0" marginwidth="0" marginheight="0"
+                width="100%" height="52"
+                src="//music.163.com/outchain/player?type=2&id=86369&auto=0&height=32">
+            </iframe>
         </div>
 
         <!-- 控制按钮 -->
         <div class="music-ctrls">
             <button class="music-ctrl-btn" id="prevBtn" title="上一首">⏮</button>
-            <button class="music-ctrl-btn music-ctrl-play" id="playBtn" title="播放/暂停">▶</button>
+            <button class="music-ctrl-btn music-ctrl-play" id="playBtn" title="在网易云中打开" title="在网易云打开">🔗</button>
             <button class="music-ctrl-btn" id="nextBtn" title="下一首">⏭</button>
-        </div>
-
-        <!-- 音量 -->
-        <div class="music-vol">
-            <span class="music-vol-icon" id="volIcon">🔊</span>
-            <input type="range" class="music-vol-slider" id="volSlider" min="0" max="100" value="65">
         </div>
 
         <!-- 播放列表 -->
@@ -868,7 +871,7 @@
             heart.addEventListener('animationend', () => heart.remove());
         });
 
-        // ========== 音乐播放器 ==========
+        // ========== 音乐播放器 (网易云官方 iframe) ==========
         const playlist = [
             { name: '偏爱', artist: '张芸京', id: '86369', icon: '💖', featured: true },
             { name: '小情歌', artist: '苏打绿', id: '353113', icon: '🌿' },
@@ -876,175 +879,57 @@
             { name: '有点甜', artist: '汪苏泷 & By2', id: '165340', icon: '🍬' },
         ];
 
-        // 网易云音乐外链 (会302跳转到实际音频)
-        function getAudioUrl(songId) {
-            return `https://music.163.com/song/media/outer/url?id=${songId}.mp3`;
-        }
-
-        // DOM 元素
-        const audio = new Audio();
         const musicToggle = document.getElementById('musicToggle');
         const musicPanel = document.getElementById('musicPanel');
         const musicClose = document.getElementById('musicClose');
-        const playBtn = document.getElementById('playBtn');
-        const prevBtn = document.getElementById('prevBtn');
-        const nextBtn = document.getElementById('nextBtn');
-        const progressBar = document.getElementById('progressBar');
-        const progressFill = document.getElementById('progressFill');
-        const curTimeEl = document.getElementById('curTime');
-        const durTimeEl = document.getElementById('durTime');
-        const volSlider = document.getElementById('volSlider');
-        const volIcon = document.getElementById('volIcon');
+        const musicIframe = document.getElementById('musicIframe');
         const nowName = document.getElementById('nowName');
         const nowArtist = document.getElementById('nowArtist');
         const musicCover = document.getElementById('musicCover');
+        const playBtn = document.getElementById('playBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
         const playlistEl = document.getElementById('playlist');
 
         let currentIndex = 0;
-        let isPlaying = false;
         let panelOpen = false;
 
-        audio.volume = 0.65;
-
-        // 格式化时间
-        function fmtTime(s) {
-            if (isNaN(s) || !isFinite(s)) return '00:00';
-            const m = Math.floor(s / 60);
-            const sec = Math.floor(s % 60);
-            return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
-        }
-
-        // 加载并播放指定索引的歌曲
         function loadSong(index) {
             const song = playlist[index];
+            currentIndex = index;
             nowName.textContent = song.name;
             nowArtist.textContent = song.artist;
             musicCover.textContent = song.icon || '🎵';
+            musicIframe.src = `//music.163.com/outchain/player?type=2&id=${song.id}&auto=1&height=32`;
             document.title = `♫ ${song.name} - ${song.artist} | 康茂顺 ♥ 晏联佳`;
-            audio.src = getAudioUrl(song.id);
-            audio.load();
+            musicToggle.classList.add('playing');
+            musicToggle.textContent = '🎵';
             updatePlaylistActive();
-            if (isPlaying) {
-                const playPromise = audio.play();
-                if (playPromise) playPromise.catch(() => {});
-            }
-        }
-
-        function playSong(index) {
-            if (index === currentIndex && isPlaying) return;
-            currentIndex = index;
-            loadSong(index);
-            audio.play().then(() => {
-                setPlaying(true);
-            }).catch(() => {
-                // 如果在线音频加载失败，静默处理
-                setPlaying(false);
-            });
-        }
-
-        function setPlaying(state) {
-            isPlaying = state;
-            if (state) {
-                playBtn.textContent = '⏸';
-                musicToggle.classList.add('playing');
-                musicToggle.textContent = '🎵';
-                musicCover.classList.add('playing');
-            } else {
-                playBtn.textContent = '▶';
-                musicToggle.classList.remove('playing');
-                musicToggle.textContent = '♪';
-                musicCover.classList.remove('playing');
-            }
-            updatePlaylistActive();
-        }
-
-        function togglePlay() {
-            if (!audio.src || audio.src === window.location.href) {
-                loadSong(currentIndex);
-                audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
-                return;
-            }
-            if (isPlaying) {
-                audio.pause();
-                setPlaying(false);
-            } else {
-                audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
-            }
         }
 
         function nextSong() {
-            currentIndex = (currentIndex + 1) % playlist.length;
-            loadSong(currentIndex);
-            if (isPlaying) {
-                audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
-            }
+            const next = (currentIndex + 1) % playlist.length;
+            loadSong(next);
         }
 
         function prevSong() {
-            currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
-            loadSong(currentIndex);
-            if (isPlaying) {
-                audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
-            }
+            const prev = (currentIndex - 1 + playlist.length) % playlist.length;
+            loadSong(prev);
         }
 
-        // 进度条
-        audio.addEventListener('timeupdate', () => {
-            const pct = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
-            progressFill.style.width = pct + '%';
-            curTimeEl.textContent = fmtTime(audio.currentTime);
-        });
+        // 打开网易云音乐链接
+        function openInNetEase() {
+            const song = playlist[currentIndex];
+            window.open(`https://music.163.com/#/song?id=${song.id}`, '_blank');
+        }
 
-        audio.addEventListener('loadedmetadata', () => {
-            durTimeEl.textContent = fmtTime(audio.duration);
-        });
-
-        audio.addEventListener('ended', () => {
-            nextSong();
-        });
-
-        audio.addEventListener('play', () => setPlaying(true));
-        audio.addEventListener('pause', () => setPlaying(false));
-        audio.addEventListener('error', () => {
-            // 加载失败时静默处理
-            setPlaying(false);
-        });
-
-        progressBar.addEventListener('click', (e) => {
-            if (!audio.duration) return;
-            const rect = progressBar.getBoundingClientRect();
-            const pct = (e.clientX - rect.left) / rect.width;
-            audio.currentTime = pct * audio.duration;
-        });
-
-        // 音量
-        volSlider.addEventListener('input', () => {
-            audio.volume = volSlider.value / 100;
-            const v = audio.volume;
-            if (v === 0) volIcon.textContent = '🔇';
-            else if (v < 0.4) volIcon.textContent = '🔈';
-            else if (v < 0.7) volIcon.textContent = '🔉';
-            else volIcon.textContent = '🔊';
-        });
-        volIcon.addEventListener('click', () => {
-            if (audio.volume > 0) {
-                audio.volume = 0;
-                volSlider.value = 0;
-                volIcon.textContent = '🔇';
-            } else {
-                audio.volume = 0.65;
-                volSlider.value = 65;
-                volIcon.textContent = '🔊';
-            }
-        });
-
-        // 播放列表 UI
+        // 播放列表
         function buildPlaylist() {
             playlistEl.innerHTML = '';
             playlist.forEach((song, i) => {
                 const item = document.createElement('div');
                 item.classList.add('music-playlist-item');
-                if (i === currentIndex) item.classList.add('active');
+                if (i === 0) item.classList.add('active');
                 item.innerHTML = `
                     <span class="music-pl-num">${i + 1}</span>
                     <span class="music-pl-info">
@@ -1052,13 +937,19 @@
                         <div class="music-pl-artist">${song.artist}</div>
                     </span>
                     ${song.featured ? '<span class="music-pl-badge">主打</span>' : ''}
-                    ${i === currentIndex && isPlaying ? '<span class="music-pl-playing"><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>' : ''}
+                    ${i === 0 ? '<span class="music-pl-playing"><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>' : ''}
                 `;
                 item.addEventListener('click', () => {
-                    if (i === currentIndex) { togglePlay(); return; }
-                    currentIndex = i;
+                    if (i === currentIndex) {
+                        // 已经选中，刷新 iframe（重新播放）
+                        loadSong(i);
+                        return;
+                    }
                     loadSong(i);
-                    audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+                    if (!panelOpen) {
+                        panelOpen = true;
+                        musicPanel.classList.add('open');
+                    }
                 });
                 playlistEl.appendChild(item);
             });
@@ -1068,16 +959,15 @@
             const items = playlistEl.querySelectorAll('.music-playlist-item');
             items.forEach((item, i) => {
                 item.classList.toggle('active', i === currentIndex);
-                // update playing indicator
                 const indicator = item.querySelector('.music-pl-playing');
-                if (i === currentIndex && isPlaying) {
+                if (i === currentIndex) {
                     if (!indicator) {
                         const span = document.createElement('span');
                         span.classList.add('music-pl-playing');
                         span.innerHTML = '<span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span>';
                         item.appendChild(span);
                     }
-                } else if (indicator && (i !== currentIndex || !isPlaying)) {
+                } else if (indicator) {
                     indicator.remove();
                 }
             });
@@ -1089,18 +979,18 @@
         function togglePanel() {
             panelOpen = !panelOpen;
             musicPanel.classList.toggle('open', panelOpen);
-            musicToggle.textContent = panelOpen ? '✕' : (isPlaying ? '🎵' : '♪');
+            musicToggle.textContent = panelOpen ? '✕' : '🎵';
         }
 
         musicToggle.addEventListener('click', togglePanel);
         musicClose.addEventListener('click', () => {
             panelOpen = false;
             musicPanel.classList.remove('open');
-            musicToggle.textContent = isPlaying ? '🎵' : '♪';
+            musicToggle.textContent = '🎵';
         });
 
         // 按钮事件
-        playBtn.addEventListener('click', togglePlay);
+        playBtn.addEventListener('click', openInNetEase);
         nextBtn.addEventListener('click', nextSong);
         prevBtn.addEventListener('click', prevSong);
 
@@ -1108,16 +998,13 @@
         document.addEventListener('keydown', (e) => {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
             switch (e.code) {
-                case 'Space': e.preventDefault(); togglePlay(); break;
                 case 'ArrowRight': e.preventDefault(); nextSong(); break;
                 case 'ArrowLeft': e.preventDefault(); prevSong(); break;
                 case 'KeyM': e.preventDefault(); togglePanel(); break;
             }
         });
 
-        // 初始化：预加载第一首歌（偏爱），但不自动播放
-        loadSong(0);
-        console.log('🎵 小情歌播放器已就绪 | 主打: 偏爱 - 张芸京 | 按空格键播放，按 M 键开关面板');
+        console.log('🎵 小情歌播放器已就绪 | 主打: 偏爱 - 张芸京 | 网易云官方播放器 | 按 ←→ 切歌，按 M 键开关面板');
     </script>
 </body>
 </html>
