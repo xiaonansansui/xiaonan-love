@@ -13,27 +13,25 @@ jobs:
 
       - uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          distribution: zulu
           java-version: 17
 
-      - name: Setup Android SDK
-        run: |
-          ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
-          # 安装编译需要的 SDK 组件
-          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" 2>&1 | tail -3
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
 
-      - name: Download & Run Gradle
+      - name: Write local.properties
         working-directory: android
-        run: |
-          wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
-          unzip -q gradle-8.5-bin.zip
-          export ANDROID_HOME=/usr/local/lib/android/sdk
-          gradle-8.5/bin/gradle assembleRelease --stacktrace 2>&1 | tee build.log
-          exit ${PIPESTATUS[0]}
+        run: echo "sdk.dir=$ANDROID_HOME" > local.properties
+
+      - name: Generate wrapper
+        working-directory: android
+        run: gradle wrapper
+
+      - name: Build
+        working-directory: android
+        run: ./gradlew assembleRelease
 
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: xiaonan-app
           path: android/app/build/outputs/apk/release/app-release-unsigned.apk
