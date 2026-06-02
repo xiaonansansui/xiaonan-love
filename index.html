@@ -2253,9 +2253,7 @@
 
         async function syncAllToGitHub() {
             if (!hasToken()) return;
-            showHint('☁️ 正在同步到云端...');
             await Promise.all([syncUsersToGitHub(), syncLogsToGitHub(), syncEditsToGitHub()]);
-            showHint('☁️ 云端同步完成！');
         }
 
         // 修改后的 addLog，同时同步到 GitHub
