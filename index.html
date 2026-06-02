@@ -2312,11 +2312,10 @@
 
             document.getElementById('saveTokenBtn').addEventListener('click', () => {
                 const tok = document.getElementById('tokenInput').value.trim();
-                if (tok) { setToken(tok); showHint('✅ Token 已保存！正在同步...'); syncAllToGitHub().then(() => renderTokenSection()); }
+                if (tok) { setToken(tok); syncAllToGitHub().then(() => renderTokenSection()); }
             });
             document.getElementById('syncBtn').addEventListener('click', () => {
                 syncFromGitHub().then(updated => {
-                    showHint(updated ? '☁️ 已从云端同步' : '☁️ 数据已是最新');
                     renderLogs();
                     updateLogoutUI();
                 });
