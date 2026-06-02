@@ -564,6 +564,104 @@
             50% { transform: scaleY(1); opacity: 1; }
         }
 
+        /* === 编辑模式 === */
+        .edit-toggle {
+            position: fixed; bottom: 30px; left: 30px;
+            z-index: 100;
+            width: 55px; height: 55px;
+            border-radius: 50%;
+            background: rgba(20, 5, 40, 0.55);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 200, 100, 0.35);
+            color: #f9d56e;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 25px rgba(255, 200, 100, 0.2);
+            transition: all 0.35s ease;
+        }
+        .edit-toggle:hover {
+            border-color: rgba(255, 200, 100, 0.7);
+            box-shadow: 0 0 40px rgba(255, 200, 100, 0.4);
+            transform: scale(1.08);
+        }
+        .edit-toggle.active {
+            border-color: rgba(255, 200, 100, 0.8);
+            box-shadow: 0 0 40px rgba(255, 200, 100, 0.5);
+            background: rgba(40, 20, 10, 0.6);
+        }
+
+        .editable {
+            transition: all 0.3s;
+            border-radius: 6px;
+            padding: 2px 6px;
+            outline: none;
+        }
+        .edit-mode .editable {
+            border: 1px dashed rgba(255, 200, 100, 0.35);
+            background: rgba(255, 200, 100, 0.05);
+            cursor: text;
+        }
+        .edit-mode .editable:hover {
+            background: rgba(255, 200, 100, 0.12);
+        }
+        .edit-mode .editable:focus {
+            border-color: rgba(255, 200, 100, 0.8);
+            background: rgba(255, 200, 100, 0.15);
+            box-shadow: 0 0 18px rgba(255, 200, 100, 0.25);
+        }
+
+        .edit-hint {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 200;
+            background: rgba(20, 5, 40, 0.85);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 200, 100, 0.4);
+            border-radius: 20px;
+            padding: 8px 20px;
+            color: #f9d56e;
+            font-size: 0.85em;
+            letter-spacing: 2px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s;
+        }
+        .edit-hint.show { opacity: 1; }
+
+        .edit-add-vow {
+            display: none;
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px dashed rgba(255, 200, 100, 0.35);
+            background: rgba(255, 200, 100, 0.05);
+            color: #f9d56e;
+            font-size: 0.9em;
+            cursor: pointer;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+        }
+        .edit-mode .edit-add-vow { display: block; }
+        .edit-add-vow:hover {
+            border-color: rgba(255, 200, 100, 0.7);
+            background: rgba(255, 200, 100, 0.15);
+        }
+
+        .edit-del {
+            display: none;
+            cursor: pointer;
+            margin-left: 8px;
+            font-size: 0.75em;
+            color: rgba(255, 120, 100, 0.5);
+            transition: color 0.3s;
+            vertical-align: middle;
+        }
+        .edit-mode .edit-del { display: inline; }
+        .edit-del:hover { color: #ff6060; }
+
         /* 响应式 */
         @media (max-width: 640px) {
             .card { padding: 40px 30px; border-radius: 24px; }
@@ -575,6 +673,7 @@
             .heart-ring:nth-child(3) { width: 190px !important; height: 190px !important; }
             .music-panel { width: 280px; right: 10px; bottom: 95px; padding: 18px; }
             .music-toggle { right: 15px; bottom: 20px; width: 48px; height: 48px; font-size: 22px; }
+            .edit-toggle { left: 15px; bottom: 20px; width: 48px; height: 48px; font-size: 22px; }
         }
     </style>
 </head>
@@ -612,19 +711,20 @@
         </div>
 
         <p class="title">
-            <span class="name-nan">康茂顺</span>
-            <span class="heart-text">&nbsp;永远永远喜欢&nbsp;</span>
-            <span class="name-bing">晏联佳</span>
+            <span class="name-nan editable" id="edtNameNan">康茂顺</span>
+            <span class="heart-text editable" id="edtHeart">永远永远喜欢</span>
+            <span class="name-bing editable" id="edtNameBing">晏联佳</span>
         </p>
-        <p class="subtitle">我们要永远永远在一起</p>
+        <p class="subtitle editable" id="edtSubtitle">我们要永远永远在一起</p>
 
         <div class="divider"></div>
 
-        <div class="vows">
-            <span>♡ 不论春夏秋冬，不论时光流转</span>
-            <span>♡ 你是我心里最温暖的光</span>
-            <span>♡ 永远永远，不离不弃</span>
+        <div class="vows" id="vowsContainer">
+            <span class="editable" data-vow="1">♡ 不论春夏秋冬，不论时光流转<span class="edit-del" data-del="1">✕</span></span>
+            <span class="editable" data-vow="2">♡ 你是我心里最温暖的光<span class="edit-del" data-del="2">✕</span></span>
+            <span class="editable" data-vow="3">♡ 永远永远，不离不弃<span class="edit-del" data-del="3">✕</span></span>
         </div>
+        <button class="edit-add-vow" id="addVowBtn">＋ 添加新誓词</button>
 
         <div class="poem-section">
             <div class="poem-divider"></div>
@@ -632,6 +732,10 @@
             <p class="poem-author" id="poem-author"></p>
         </div>
     </div>
+
+    <!-- ========== 编辑按钮 ========== -->
+    <button class="edit-toggle" id="editToggle" title="✏️ 编辑模式">✏️</button>
+    <div class="edit-hint" id="editHint">✏️ 编辑模式 — 点击文字即可修改，自动保存 💾</div>
 
     <!-- ========== 音乐播放器 ========== -->
     <!-- 浮动按钮 -->
@@ -1045,6 +1149,149 @@
 
         loadSong(0);
         console.log('🎵 小情歌播放器已就绪 | 主打: 偏爱 - 张芸京 | 本地音频 | 空格=播放 ←→=切歌 M=面板');
+
+        // ========== 编辑模式 ==========
+        const editToggle = document.getElementById('editToggle');
+        const editHint = document.getElementById('editHint');
+        const vowsContainer = document.getElementById('vowsContainer');
+        const addVowBtn = document.getElementById('addVowBtn');
+        let editMode = false;
+        let hintTimer = null;
+
+        // 可编辑元素选择器
+        const editableSelectors = [
+            '#edtNameNan', '#edtHeart', '#edtNameBing', '#edtSubtitle',
+            '#vowsContainer .editable'
+        ];
+
+        function showHint(msg) {
+            editHint.textContent = msg || '✏️ 编辑模式 — 点击文字即可修改，自动保存 💾';
+            editHint.classList.add('show');
+            if (hintTimer) clearTimeout(hintTimer);
+            hintTimer = setTimeout(() => editHint.classList.remove('show'), 2500);
+        }
+
+        // 保存到 localStorage
+        function saveEdits() {
+            const data = {
+                nameNan: document.getElementById('edtNameNan').textContent.trim(),
+                heart: document.getElementById('edtHeart').textContent.trim(),
+                nameBing: document.getElementById('edtNameBing').textContent.trim(),
+                subtitle: document.getElementById('edtSubtitle').textContent.trim(),
+                vows: Array.from(vowsContainer.querySelectorAll('.editable')).map(el => {
+                    // remove the ✕ button text
+                    const clone = el.cloneNode(true);
+                    const delBtn = clone.querySelector('.edit-del');
+                    if (delBtn) delBtn.remove();
+                    return clone.textContent.trim();
+                }),
+            };
+            localStorage.setItem('xiaonan-love-edits', JSON.stringify(data));
+            showHint('💾 已自动保存！');
+        }
+
+        // 从 localStorage 加载
+        function loadEdits() {
+            const saved = localStorage.getItem('xiaonan-love-edits');
+            if (!saved) return;
+            try {
+                const data = JSON.parse(saved);
+                if (data.nameNan) document.getElementById('edtNameNan').textContent = data.nameNan;
+                if (data.heart) document.getElementById('edtHeart').textContent = data.heart;
+                if (data.nameBing) document.getElementById('edtNameBing').textContent = data.nameBing;
+                if (data.subtitle) document.getElementById('edtSubtitle').textContent = data.subtitle;
+                if (data.vows && data.vows.length > 0) {
+                    vowsContainer.innerHTML = '';
+                    data.vows.forEach((v, i) => {
+                        const span = document.createElement('span');
+                        span.classList.add('editable');
+                        span.setAttribute('data-vow', i + 1);
+                        span.innerHTML = v + `<span class="edit-del" data-del="${i + 1}">✕</span>`;
+                        vowsContainer.appendChild(span);
+                    });
+                    bindVowEvents();
+                }
+            } catch(e) { console.log('加载编辑数据失败', e); }
+        }
+
+        // 绑定誓词删除事件
+        function bindVowEvents() {
+            vowsContainer.querySelectorAll('.edit-del').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const span = btn.parentElement;
+                    if (vowsContainer.querySelectorAll('.editable').length <= 1) {
+                        showHint('⚠️ 至少保留一条誓词哦~');
+                        return;
+                    }
+                    span.style.opacity = '0';
+                    span.style.transform = 'translateX(20px)';
+                    span.style.transition = 'all 0.3s';
+                    setTimeout(() => { span.remove(); saveEdits(); }, 300);
+                });
+            });
+        }
+
+        // 监听所有可编辑元素的输入事件，自动保存
+        function bindAutoSave() {
+            editableSelectors.forEach(sel => {
+                document.querySelectorAll(sel).forEach(el => {
+                    el.addEventListener('input', () => saveEdits());
+                });
+            });
+        }
+
+        // 切换编辑模式
+        function toggleEditMode() {
+            editMode = !editMode;
+            document.body.classList.toggle('edit-mode', editMode);
+            editToggle.classList.toggle('active', editMode);
+            editToggle.title = editMode ? '✏️ 退出编辑' : '✏️ 编辑模式';
+
+            if (editMode) {
+                showHint('✏️ 编辑模式开启 — 点击文字即可修改');
+                // 使可编辑
+                editableSelectors.forEach(sel => {
+                    document.querySelectorAll(sel).forEach(el => {
+                        el.setAttribute('contenteditable', 'true');
+                    });
+                });
+                bindAutoSave();
+                bindVowEvents();
+            } else {
+                showHint('🔒 编辑模式已关闭');
+                // 取消可编辑
+                editableSelectors.forEach(sel => {
+                    document.querySelectorAll(sel).forEach(el => {
+                        el.removeAttribute('contenteditable');
+                    });
+                });
+                saveEdits();
+            }
+        }
+
+        // 添加新誓词
+        addVowBtn.addEventListener('click', () => {
+            if (!editMode) return;
+            const count = vowsContainer.querySelectorAll('.editable').length + 1;
+            const span = document.createElement('span');
+            span.classList.add('editable');
+            span.setAttribute('data-vow', count);
+            span.setAttribute('contenteditable', 'true');
+            span.innerHTML = `♡ 新誓词 ${count}<span class="edit-del" data-del="${count}">✕</span>`;
+            span.addEventListener('input', () => saveEdits());
+            vowsContainer.appendChild(span);
+            bindVowEvents();
+            span.focus();
+            saveEdits();
+            showHint('✨ 新誓词已添加！点击文字修改内容');
+        });
+
+        editToggle.addEventListener('click', toggleEditMode);
+
+        // 加载已保存的编辑
+        loadEdits();
+        console.log('✏️ 编辑模式已就绪 | 左下角铅笔按钮 | 修改自动保存到浏览器');
     </script>
 </body>
 </html>
