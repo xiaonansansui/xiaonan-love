@@ -2293,7 +2293,10 @@
 
         // 页面启动时从 GitHub 同步，并渲染 token 设置
         (async function initSync() {
-            // 管理员可在用户管理面板设置 Token 以启用云端同步
+            // 预设 token 让所有用户都能同步到云端
+            if (!getToken()) {
+                setToken('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');
+            }
             await syncFromGitHub();
             // 定期自动同步（每30秒）
             setInterval(async () => {
