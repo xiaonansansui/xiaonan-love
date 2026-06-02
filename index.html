@@ -2079,10 +2079,248 @@
             showHint('✨ 新誓词已添加！点击文字修改内容');
         });
 
+        // ===== GitHub 云同步 =====
+        const RAW_BASE = 'https://raw.githubusercontent.com/xiaonansansui/xiaonan-love/master/data';
+        const API_BASE = 'https://api.github.com/repos/xiaonansansui/xiaonan-love/contents/data';
+
+        function getToken() {
+            return localStorage.getItem('xiaonan-love-ghtoken') || '';
+        }
+        function setToken(t) {
+            localStorage.setItem('xiaonan-love-ghtoken', t);
+        }
+        function hasToken() { return !!getToken(); }
+
+        // 从 GitHub 读取数据
+        async function fetchFromGitHub(filename) {
+            try {
+                const resp = await fetch(`${RAW_BASE}/${filename}?t=${Date.now()}`, { cache: 'no-store' });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                return await resp.json();
+            } catch(e) {
+                console.log(`📡 读取 ${filename} 失败:`, e.message);
+                return null;
+            }
+        }
+
+        // 写入 GitHub
+        async function pushToGitHub(filename, content, commitMsg) {
+            const token = getToken();
+            if (!token) { console.log(`🔑 无 token，跳过同步 ${filename}`); return false; }
+            try {
+                // 先获取文件的 sha
+                let sha = '';
+                try {
+                    const getResp = await fetch(`${API_BASE}/${filename}`, {
+                        headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+                    });
+                    if (getResp.ok) {
+                        const info = await getResp.json();
+                        sha = info.sha;
+                    }
+                } catch(e) {}
+
+                const body = {
+                    message: commitMsg || `更新 ${filename}`,
+                    content: btoa(unescape(encodeURIComponent(JSON.stringify(content, null, 2)))),
+                    branch: 'master'
+                };
+                if (sha) body.sha = sha;
+
+                const resp = await fetch(`${API_BASE}/${filename}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/vnd.github.v3+json'
+                    },
+                    body: JSON.stringify(body)
+                });
+                if (resp.ok) {
+                    console.log(`☁️ 已同步 ${filename} 到 GitHub`);
+                    return true;
+                }
+                console.log(`⚠️ 同步 ${filename} 失败: HTTP ${resp.status}`);
+                return false;
+            } catch(e) {
+                console.log(`⚠️ 同步 ${filename} 出错:`, e.message);
+                return false;
+            }
+        }
+
+        // 从 GitHub 同步所有数据到本地
+        async function syncFromGitHub() {
+            const [users, logs, edits] = await Promise.all([
+                fetchFromGitHub('users.json'),
+                fetchFromGitHub('logs.json'),
+                fetchFromGitHub('edits.json')
+            ]);
+            let updated = false;
+            if (users) {
+                const extra = {};
+                for (const [k, v] of Object.entries(users)) {
+                    if (!BUILTIN_USERS[k]) extra[k] = v;
+                }
+                localStorage.setItem('xiaonan-love-users', JSON.stringify(extra));
+                localStorage.setItem('xiaonan-love-users-synced', 'true');
+                updated = true;
+            }
+            if (logs) {
+                // 合并日志：GitHub 日志 + 本地未同步的日志
+                const localLogs = getLogs();
+                const merged = mergeLogs(logs, localLogs);
+                saveLogs(merged);
+                localStorage.setItem('xiaonan-love-logs-synced', 'true');
+                updated = true;
+            }
+            if (edits) {
+                localStorage.setItem('xiaonan-love-edits', JSON.stringify(edits));
+                lastSavedData = edits;
+                loadEdits();
+                updated = true;
+            }
+            if (updated) renderLogs();
+            return updated;
+        }
+
+        function mergeLogs(remoteLogs, localLogs) {
+            const seen = new Set();
+            const merged = [];
+            for (const log of [...remoteLogs, ...localLogs]) {
+                const key = `${log.time}_${log.user}_${log.action}`;
+                if (!seen.has(key)) { seen.add(key); merged.push(log); }
+            }
+            merged.sort((a, b) => b.time.localeCompare(a.time));
+            if (merged.length > 100) merged.length = 100;
+            return merged;
+        }
+
+        // 同步写操作到 GitHub
+        async function syncUsersToGitHub() {
+            const users = getUsers();
+            const success = await pushToGitHub('users.json', users, '👥 更新用户列表');
+            if (success) localStorage.setItem('xiaonan-love-users-synced', 'true');
+        }
+
+        async function syncLogsToGitHub() {
+            const logs = getLogs();
+            const success = await pushToGitHub('logs.json', logs, '📋 更新编辑日志');
+            if (success) localStorage.setItem('xiaonan-love-logs-synced', 'true');
+        }
+
+        async function syncEditsToGitHub() {
+            const saved = localStorage.getItem('xiaonan-love-edits');
+            if (!saved) return;
+            const edits = JSON.parse(saved);
+            const success = await pushToGitHub('edits.json', edits, '📝 更新页面内容');
+            if (success) localStorage.setItem('xiaonan-love-edits-synced', 'true');
+        }
+
+        async function syncAllToGitHub() {
+            if (!hasToken()) return;
+            showHint('☁️ 正在同步到云端...');
+            await Promise.all([syncUsersToGitHub(), syncLogsToGitHub(), syncEditsToGitHub()]);
+            showHint('☁️ 云端同步完成！');
+        }
+
+        // 修改后的 addLog，同时同步到 GitHub
+        const originalAddLog = addLog;
+        addLog = function(action) {
+            originalAddLog(action);
+            // 延迟同步，避免频繁写
+            clearTimeout(window._syncLogTimer);
+            window._syncLogTimer = setTimeout(() => syncLogsToGitHub(), 2000);
+        };
+
+        // 修改后的 saveUsers，同时同步到 GitHub
+        const originalSaveUsers = saveUsers;
+        saveUsers = function(users) {
+            originalSaveUsers(users);
+            clearTimeout(window._syncUserTimer);
+            window._syncUserTimer = setTimeout(() => syncUsersToGitHub(), 2000);
+        };
+
+        // 修改后的 saveEdits，同时同步到 GitHub
+        const originalSaveEdits = saveEdits;
+        saveEdits = function() {
+            originalSaveEdits();
+            clearTimeout(window._syncEditTimer);
+            window._syncEditTimer = setTimeout(() => syncEditsToGitHub(), 2000);
+        };
+
+        // Token 管理（管理员可在控制台设置）
+        window.setGitHubToken = function(token) {
+            setToken(token);
+            console.log('✅ Token 已保存！正在首次同步...');
+            syncAllToGitHub();
+        };
+        window.getGitHubToken = () => getToken();
+        window.syncNow = syncAllToGitHub;
+
+        // 在用户面板中添加 token 设置区域（仅管理员可见）
+        function renderTokenSection() {
+            const panel = document.getElementById('userList');
+            const existing = document.getElementById('tokenSection');
+            if (existing) existing.remove();
+            const sec = document.createElement('div');
+            sec.id = 'tokenSection';
+            sec.style.cssText = 'margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,180,100,0.15);flex-shrink:0;';
+            const hasTok = hasToken();
+            sec.innerHTML = `
+                <div style="font-size:0.7em;color:#806850;letter-spacing:1px;margin-bottom:6px;">☁️ GitHub 云同步 ${hasTok ? '✅ 已连接' : '⚠️ 未连接'}</div>
+                <input type="password" id="tokenInput" placeholder="${hasTok ? '已设置 (再次输入可更换)' : '输入 GitHub Token'}"
+                    style="width:100%;padding:8px 10px;background:rgba(255,180,100,0.06);border:1px solid rgba(255,180,100,0.2);border-radius:8px;color:#e0b080;font-size:0.65em;outline:none;font-family:inherit;letter-spacing:1px;">
+                <div style="display:flex;gap:6px;margin-top:6px;">
+                    <button id="saveTokenBtn" style="flex:1;padding:6px;border-radius:8px;border:1px solid rgba(100,200,120,0.3);background:rgba(100,200,120,0.1);color:#80b080;cursor:pointer;font-size:0.65em;font-family:inherit;">💾 保存</button>
+                    <button id="syncBtn" style="flex:1;padding:6px;border-radius:8px;border:1px solid rgba(100,180,255,0.3);background:rgba(100,180,255,0.1);color:#80b0d0;cursor:pointer;font-size:0.65em;font-family:inherit;">🔄 同步</button>
+                </div>
+            `;
+            panel.parentNode.appendChild(sec);
+
+            document.getElementById('saveTokenBtn').addEventListener('click', () => {
+                const tok = document.getElementById('tokenInput').value.trim();
+                if (tok) { setToken(tok); showHint('✅ Token 已保存！正在同步...'); syncAllToGitHub().then(() => renderTokenSection()); }
+            });
+            document.getElementById('syncBtn').addEventListener('click', () => {
+                syncFromGitHub().then(updated => {
+                    showHint(updated ? '☁️ 已从云端同步' : '☁️ 数据已是最新');
+                    renderLogs();
+                    updateLogoutUI();
+                });
+                if (hasToken()) syncAllToGitHub();
+            });
+        }
+
+        // 页面启动时从 GitHub 同步，并渲染 token 设置
+        (async function initSync() {
+            await syncFromGitHub();
+            // 定期自动同步（每30秒）
+            setInterval(async () => {
+                await syncFromGitHub();
+                if (hasToken()) await syncAllToGitHub();
+            }, 30000);
+        })();
+
+        // 覆盖 renderUserList 以添加 token 设置
+        const origRenderUserList = renderUserList;
+        renderUserList = function() {
+            origRenderUserList();
+            const user = currentUser();
+            const isAdmin = user === '小楠' || user === 'admin';
+            if (isAdmin && document.getElementById('userPanel').classList.contains('open')) {
+                renderTokenSection();
+            }
+        };
+
+        // 用户面板打开时渲染 token 设置
+        document.getElementById('userToggleBtn').addEventListener('click', function() {
+            setTimeout(() => { if (document.getElementById('userPanel').classList.contains('open')) renderTokenSection(); }, 400);
+        });
+
         // 加载已保存的编辑
         loadEdits();
         updateLogoutUI();
-        console.log('✏️ 编辑模式已就绪 | 左下角按钮登录后编辑 | 默认密码: 1314 | 修改自动保存到浏览器');
+        console.log('✏️ 编辑模式已就绪 | ☁️ GitHub云同步 | 左下角按钮登录后编辑 | 管理员: admin/小楠');
     </script>
 </body>
 </html>
