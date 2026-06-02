@@ -662,6 +662,91 @@
         .edit-mode .edit-del { display: inline; }
         .edit-del:hover { color: #ff6060; }
 
+        /* === 编辑日志面板 === */
+        .log-toggle-btn {
+            display: none;
+            position: fixed; bottom: 95px; left: 30px;
+            z-index: 100;
+            font-size: 0.72em; color: rgba(100, 200, 255, 0.5);
+            letter-spacing: 1px; cursor: pointer;
+            transition: color 0.3s; background: none; border: none;
+            font-family: inherit;
+        }
+        .log-toggle-btn.show { display: block; }
+        .log-toggle-btn:hover { color: #6cc8ff; }
+
+        .log-panel {
+            position: fixed; bottom: 30px; left: 100px;
+            z-index: 99;
+            width: 340px; max-height: 400px;
+            background: rgba(15, 5, 35, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(100, 200, 255, 0.25);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 0 40px rgba(100, 180, 255, 0.15);
+            transform: translateY(20px) scale(0.9);
+            opacity: 0; pointer-events: none;
+            transition: all 0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
+            color: #d0d8e8; overflow: hidden;
+            display: flex; flex-direction: column;
+        }
+        .log-panel.open {
+            transform: translateY(0) scale(1);
+            opacity: 1; pointer-events: all;
+        }
+        .log-panel-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 14px; padding-bottom: 10px;
+            border-bottom: 1px solid rgba(100, 200, 255, 0.15);
+            flex-shrink: 0;
+        }
+        .log-panel-title {
+            font-size: 0.9em; letter-spacing: 2px;
+            color: #8cc8f0;
+        }
+        .log-panel-close {
+            width: 26px; height: 26px; border-radius: 50%;
+            background: rgba(100, 200, 255, 0.08);
+            border: 1px solid rgba(100, 200, 255, 0.2);
+            color: #8ab8d8; cursor: pointer; font-size: 13px;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s;
+        }
+        .log-panel-close:hover { background: rgba(100, 200, 255, 0.2); color: #6cc8ff; }
+        .log-list {
+            flex: 1; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 6px;
+        }
+        .log-list::-webkit-scrollbar { width: 3px; }
+        .log-list::-webkit-scrollbar-thumb { background: rgba(100, 200, 255, 0.2); border-radius: 2px; }
+        .log-item {
+            padding: 8px 12px; border-radius: 10px;
+            background: rgba(100, 200, 255, 0.04);
+            font-size: 0.72em; letter-spacing: 1px;
+            border: 1px solid rgba(100, 200, 255, 0.08);
+        }
+        .log-item .log-time { color: #6088a8; font-size: 0.85em; }
+        .log-item .log-user { color: #8cc8f0; font-weight: bold; }
+        .log-item .log-action { color: #b0c8e0; }
+        .log-empty { font-size: 0.78em; color: #506878; text-align: center; padding: 20px; letter-spacing: 2px; }
+        .log-clear {
+            margin-top: 10px; padding: 6px; border-radius: 10px;
+            border: 1px solid rgba(255, 100, 100, 0.2);
+            background: rgba(255, 100, 100, 0.05);
+            color: #b08088; font-size: 0.7em; cursor: pointer;
+            letter-spacing: 1px; transition: all 0.3s; font-family: inherit;
+            flex-shrink: 0;
+        }
+        .log-clear:hover { background: rgba(255, 100, 100, 0.15); color: #ff8080; }
+
+        /* 响应式补充 */
+        @media (max-width: 640px) {
+            .log-panel { width: 260px; left: 80px; max-height: 320px; }
+            .log-toggle-btn { left: 15px; bottom: 78px; }
+        }
+
         /* === 登录弹窗 === */
         .login-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -854,7 +939,18 @@
     <!-- ========== 编辑按钮 ========== -->
     <button class="edit-toggle" id="editToggle" title="✏️ 编辑模式">✏️</button>
     <span class="login-logout" id="logoutBtn">🔓 退出登录</span>
+    <button class="log-toggle-btn" id="logToggleBtn">📋 编辑日志</button>
     <div class="edit-hint" id="editHint">✏️ 编辑模式 — 点击文字即可修改，自动保存 💾</div>
+
+    <!-- 日志面板 -->
+    <div class="log-panel" id="logPanel">
+        <div class="log-panel-header">
+            <span class="log-panel-title">📋 编辑日志</span>
+            <button class="log-panel-close" id="logClose">✕</button>
+        </div>
+        <div class="log-list" id="logList"><div class="log-empty">暂无编辑记录</div></div>
+        <button class="log-clear" id="logClear">🗑 清空日志</button>
+    </div>
 
     <!-- 登录弹窗 -->
     <div class="login-overlay" id="loginOverlay">
@@ -1510,10 +1606,66 @@
         function updateLogoutUI() {
             const logged = isLoggedIn();
             const user = currentUser();
+            const isAdmin = user === '小楠' || user === 'admin';
             logoutBtn.classList.toggle('show', logged);
             logoutBtn.textContent = logged ? `🔓 ${user} · 退出` : '';
             editToggle.textContent = logged ? '✏️' : '🔒';
+            // 只有小楠/admin 能看到日志按钮
+            document.getElementById('logToggleBtn').classList.toggle('show', logged && isAdmin);
         }
+
+        // ===== 编辑日志系统 =====
+        function getLogs() {
+            const raw = localStorage.getItem('xiaonan-love-logs');
+            if (raw) { try { return JSON.parse(raw); } catch(e) { return []; } }
+            return [];
+        }
+        function saveLogs(logs) { localStorage.setItem('xiaonan-love-logs', JSON.stringify(logs)); }
+
+        function addLog(action) {
+            const logs = getLogs();
+            const user = currentUser();
+            const now = new Date();
+            const time = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+            logs.unshift({ user, action, time });
+            if (logs.length > 100) logs.length = 100; // 最多100条
+            saveLogs(logs);
+            renderLogs();
+        }
+
+        function renderLogs() {
+            const logs = getLogs();
+            const list = document.getElementById('logList');
+            if (logs.length === 0) {
+                list.innerHTML = '<div class="log-empty">暂无编辑记录</div>';
+            } else {
+                list.innerHTML = logs.map(l => `
+                    <div class="log-item">
+                        <span class="log-time">${l.time}</span>
+                        <span class="log-user"> ${l.user}</span>
+                        <span class="log-action"> ${l.action}</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // 日志面板开关
+        document.getElementById('logToggleBtn').addEventListener('click', () => {
+            document.getElementById('logPanel').classList.toggle('open');
+        });
+        document.getElementById('logClose').addEventListener('click', () => {
+            document.getElementById('logPanel').classList.remove('open');
+        });
+        document.getElementById('logClear').addEventListener('click', () => {
+            if (confirm('确定要清空所有编辑日志吗？')) {
+                saveLogs([]);
+                renderLogs();
+                showHint('🗑 日志已清空');
+            }
+        });
+
+        // 初始渲染日志
+        renderLogs();
 
         // 可编辑元素选择器
         const editableSelectors = [
@@ -1544,6 +1696,7 @@
                 }),
             };
             localStorage.setItem('xiaonan-love-edits', JSON.stringify(data));
+            addLog('修改了页面内容');
             showHint('💾 已自动保存！');
         }
 
@@ -1584,7 +1737,7 @@
                     span.style.opacity = '0';
                     span.style.transform = 'translateX(20px)';
                     span.style.transition = 'all 0.3s';
-                    setTimeout(() => { span.remove(); saveEdits(); }, 300);
+                    setTimeout(() => { span.remove(); saveEdits(); addLog('删除了一条誓词'); }, 300);
                 });
             });
         }
@@ -1675,6 +1828,7 @@
             bindVowEvents();
             span.focus();
             saveEdits();
+            addLog('添加了一条新誓词');
             showHint('✨ 新誓词已添加！点击文字修改内容');
         });
 
