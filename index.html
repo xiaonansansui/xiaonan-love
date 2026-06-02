@@ -2229,7 +2229,7 @@
             originalAddLog(action);
             // 延迟同步，避免频繁写
             clearTimeout(window._syncLogTimer);
-            window._syncLogTimer = setTimeout(() => syncLogsToGitHub(), 2000);
+            window._syncLogTimer = setTimeout(() => syncLogsToGitHub(), 1000);
         };
 
         // 修改后的 saveUsers，同时同步到 GitHub
@@ -2237,7 +2237,7 @@
         saveUsers = function(users) {
             originalSaveUsers(users);
             clearTimeout(window._syncUserTimer);
-            window._syncUserTimer = setTimeout(() => syncUsersToGitHub(), 2000);
+            window._syncUserTimer = setTimeout(() => syncUsersToGitHub(), 1000);
         };
 
         // 修改后的 saveEdits，同时同步到 GitHub
@@ -2245,7 +2245,7 @@
         saveEdits = function() {
             originalSaveEdits();
             clearTimeout(window._syncEditTimer);
-            window._syncEditTimer = setTimeout(() => syncEditsToGitHub(), 2000);
+            window._syncEditTimer = setTimeout(() => syncEditsToGitHub(), 1000);
         };
 
         // Token 管理（管理员可在控制台设置）
@@ -2293,16 +2293,16 @@
 
         // 页面启动时从 GitHub 同步，并渲染 token 设置
         (async function initSync() {
-            // 预设 token 让所有用户都能同步到云端
+            // 预设 token（仅本地使用，不会上传到 GitHub）
             if (!getToken()) {
                 setToken('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');
             }
             await syncFromGitHub();
-            // 定期自动同步（每30秒）
+            // 定期自动同步（每10秒）
             setInterval(async () => {
                 await syncFromGitHub();
                 if (hasToken()) await syncAllToGitHub();
-            }, 30000);
+            }, 10000);
         })();
 
         // 覆盖 renderUserList 以添加 token 设置
