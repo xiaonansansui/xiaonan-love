@@ -2342,11 +2342,11 @@
                 setToken('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');
             }
             await syncFromGitHub();
-            // 定期自动同步：先上传本地修改，再拉取远端合并
+            // 定期自动同步（每3分钟）：先上传本地修改，再拉取远端合并
             setInterval(async () => {
                 if (hasToken()) await syncAllToGitHub();
                 await syncFromGitHub();
-            }, 3000);
+            }, 180000);
         })();
 
         // 覆盖 renderUserList 以添加 token 设置
