@@ -23,7 +23,9 @@ jobs:
           gradle-version: 8.5
 
       - name: Set Android SDK
-        run: echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> android/local.properties
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "sdk.dir=$ANDROID_HOME" >> android/local.properties
 
       - name: Build
         working-directory: android
