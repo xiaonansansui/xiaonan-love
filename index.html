@@ -755,8 +755,8 @@
         .log-panel {
             position: fixed; bottom: 30px; left: 100px;
             z-index: 99;
-            width: 340px; max-height: 400px;
-            background: rgba(15, 5, 35, 0.85);
+            width: 420px; max-height: 500px;
+            background: rgba(15, 5, 35, 0.88);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(100, 200, 255, 0.25);
@@ -799,14 +799,15 @@
         .log-list::-webkit-scrollbar { width: 3px; }
         .log-list::-webkit-scrollbar-thumb { background: rgba(100, 200, 255, 0.2); border-radius: 2px; }
         .log-item {
-            padding: 8px 12px; border-radius: 10px;
+            padding: 9px 12px; border-radius: 10px;
             background: rgba(100, 200, 255, 0.04);
-            font-size: 0.72em; letter-spacing: 1px;
+            font-size: 0.74em; letter-spacing: 1px;
             border: 1px solid rgba(100, 200, 255, 0.08);
+            line-height: 1.5;
         }
-        .log-item .log-time { color: #6088a8; font-size: 0.85em; }
+        .log-item .log-time { color: #6088a8; font-size: 0.82em; display: block; margin-bottom: 2px; }
         .log-item .log-user { color: #8cc8f0; font-weight: bold; }
-        .log-item .log-action { color: #b0c8e0; }
+        .log-item .log-action { color: #b0c8e0; word-break: break-all; }
         .log-empty { font-size: 0.78em; color: #506878; text-align: center; padding: 20px; letter-spacing: 2px; }
         .log-clear {
             margin-top: 10px; padding: 6px; border-radius: 10px;
@@ -820,7 +821,7 @@
 
         /* 响应式补充 */
         @media (max-width: 640px) {
-            .log-panel { width: 260px; left: 80px; max-height: 320px; }
+            .log-panel { width: 280px; left: 80px; max-height: 380px; }
             .log-toggle-btn { left: 15px; bottom: 78px; }
         }
 
@@ -1877,6 +1878,9 @@
         }
 
         // 保存到 localStorage
+        // 上次保存的内容，用于对比变化
+        let lastSavedData = null;
+
         function saveEdits() {
             const data = {
                 nameNan: document.getElementById('edtNameNan').textContent.trim(),
@@ -1884,17 +1888,64 @@
                 nameBing: document.getElementById('edtNameBing').textContent.trim(),
                 subtitle: document.getElementById('edtSubtitle').textContent.trim(),
                 vows: Array.from(vowsContainer.querySelectorAll('.editable')).map(el => {
-                    // remove the ✕ button text
                     const clone = el.cloneNode(true);
                     const delBtn = clone.querySelector('.edit-del');
                     if (delBtn) delBtn.remove();
                     return clone.textContent.trim();
                 }),
             };
+
+            // 对比变化，生成详细日志
+            const changes = [];
+            const fieldLabels = {
+                nameNan: '左边名字',
+                heart: '中间心语',
+                nameBing: '右边名字',
+                subtitle: '副标题',
+            };
+
+            if (lastSavedData) {
+                // 检查文本字段
+                for (const key of ['nameNan', 'heart', 'nameBing', 'subtitle']) {
+                    if (lastSavedData[key] !== data[key]) {
+                        changes.push(`${fieldLabels[key]}:「${lastSavedData[key]}」→「${data[key]}」`);
+                    }
+                }
+                // 检查誓词
+                const oldVows = lastSavedData.vows || [];
+                const newVows = data.vows || [];
+                if (JSON.stringify(oldVows) !== JSON.stringify(newVows)) {
+                    if (oldVows.length !== newVows.length) {
+                        changes.push(`誓词数量: ${oldVows.length}条 → ${newVows.length}条`);
+                    } else {
+                        for (let i = 0; i < newVows.length; i++) {
+                            if (oldVows[i] !== newVows[i]) {
+                                changes.push(`誓词${i+1}:「${oldVows[i]}」→「${newVows[i]}」`);
+                            }
+                        }
+                    }
+                }
+                if (changes.length === 0) changes.push('保存（无变化）');
+            } else {
+                changes.push('首次保存页面内容');
+            }
+
+            lastSavedData = data;
             localStorage.setItem('xiaonan-love-edits', JSON.stringify(data));
-            addLog('修改了页面内容');
+
+            // 记录每条变化
+            changes.forEach(c => addLog(c));
             showHint('💾 已自动保存！');
         }
+
+        // 初始化 lastSavedData
+        function initLastSaved() {
+            const saved = localStorage.getItem('xiaonan-love-edits');
+            if (saved) {
+                try { lastSavedData = JSON.parse(saved); } catch(e) {}
+            }
+        }
+        initLastSaved();
 
         // 从 localStorage 加载
         function loadEdits() {
