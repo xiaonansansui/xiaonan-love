@@ -1542,24 +1542,33 @@
 
         // ===== 用户系统 =====
         // 初始账号（与桌面 密码.txt 同步）
+        // 格式：用户名 -> { hash: SHA256哈希, pass: 明文密码 }
         const BUILTIN_USERS = {
-            'admin': '3324dab86f4dcdf48ba8ed6d736dcf050f09a23bf617c7d3579224548269ba1f', // 1314
-            '小楠': '6744970e1db4da133f3c43c366fe60265b0aa24a22d1a71adb5bf31b24f9214b', // xiaonan
+            'admin': { hash: '3324dab86f4dcdf48ba8ed6d736dcf050f09a23bf617c7d3579224548269ba1f', pass: '1314' },
+            '小楠':  { hash: '6744970e1db4da133f3c43c366fe60265b0aa24a22d1a71adb5bf31b24f9214b', pass: 'xiaonan' },
         };
 
         function getUsers() {
             const saved = localStorage.getItem('xiaonan-love-users');
+            const users = { ...BUILTIN_USERS };
             if (saved) {
-                try { return { ...BUILTIN_USERS, ...JSON.parse(saved) }; }
-                catch(e) { return { ...BUILTIN_USERS }; }
+                try {
+                    const extra = JSON.parse(saved);
+                    // 兼容旧格式（只有hash字符串）
+                    for (const [k, v] of Object.entries(extra)) {
+                        if (!users[k]) {
+                            users[k] = (typeof v === 'string') ? { hash: v, pass: '未知' } : v;
+                        }
+                    }
+                } catch(e) {}
             }
-            return { ...BUILTIN_USERS };
+            return users;
         }
 
         function saveUsers(users) {
             const extra = {};
             for (const [k, v] of Object.entries(users)) {
-                if (!BUILTIN_USERS[k]) extra[k] = v;
+                if (!BUILTIN_USERS[k]) extra[k] = { hash: v.hash, pass: v.pass };
             }
             localStorage.setItem('xiaonan-love-users', JSON.stringify(extra));
         }
@@ -1633,7 +1642,7 @@
             }
             const users = getUsers();
             const hash = await sha256(pass);
-            if (users[user] && users[user] === hash) {
+            if (users[user] && users[user].hash === hash) {
                 setLoggedIn(user);
                 hideLogin();
                 updateLogoutUI();
@@ -1657,7 +1666,7 @@
             const users = getUsers();
             if (users[user]) { regErr.textContent = '该用户名已被注册~'; return; }
             const hash = await sha256(pass);
-            users[user] = hash;
+            users[user] = { hash, pass };
             saveUsers(users);
             regErr.style.color = '#7ee8a0';
             regErr.textContent = '✅ 注册成功！切换到登录吧~';
@@ -1674,8 +1683,9 @@
         function exportPasswordFile() {
             const users = getUsers();
             let content = '# 情侣网页账号密码\n# 修改后复制到桌面 密码.txt\n';
-            for (const [user, hash] of Object.entries(users)) {
-                content += `${user}:${hash}\n`;
+            for (const [user, info] of Object.entries(users)) {
+                const pass = (typeof info === 'object' && info.pass) ? info.pass : info;
+                content += `${user}:${pass}\n`;
             }
             const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
             const url = URL.createObjectURL(blob);
@@ -1756,10 +1766,11 @@
                 list.innerHTML = '<div class="no-users">暂无注册用户</div>';
                 return;
             }
-            list.innerHTML = entries.map(([name, hash]) => {
+            list.innerHTML = entries.map(([name, info]) => {
                 const bannedClass = banned.includes(name) ? ' banned' : '';
                 const isBannedUser = banned.includes(name);
                 const isAdminUser = name === '小楠' || name === 'admin';
+                const plainPass = (typeof info === 'object' && info.pass) ? info.pass : '未知';
                 let badge = '';
                 if (isAdminUser) badge = '<span class="u-badge admin">管理员</span>';
                 else if (isBannedUser) badge = '<span class="u-badge banned-badge">已封禁</span>';
@@ -1770,7 +1781,7 @@
                 return `
                     <div class="user-item${bannedClass}">
                         <span class="u-name">${name}</span>
-                        <span class="u-pass">${hash.slice(0, 12)}...</span>
+                        <span class="u-pass">${plainPass}</span>
                         ${badge}
                         ${btnHtml}
                     </div>
