@@ -1128,7 +1128,22 @@
         <div class="music-playlist" id="playlist"></div>
     </div>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
     <script>
+        // ========== Firebase 初始化 ==========
+        firebase.initializeApp({
+            apiKey: "AIzaSyDgF75J9AYisiPmzYZmPM9CeiAEu4gx10U",
+            authDomain: "xiaonansansui.firebaseapp.com",
+            databaseURL: "https://xiaonansansui-default-rtdb.firebaseio.com",
+            projectId: "xiaonansansui",
+            storageBucket: "xiaonansansui.firebasestorage.app",
+            messagingSenderId: "718870287753",
+            appId: "1:718870287753:web:421b96520c79e3d823fd58"
+        });
+        const fbdb = firebase.database();
+
         // ========== Canvas 星空 + 极光 + 流星 ==========
         const canvas = document.getElementById('bg');
         const ctx = canvas.getContext('2d');
@@ -1647,21 +1662,23 @@
             const hash = await sha256(pass);
             let users = getUsers();
 
-            // 本地找不到用户 → 直接从 GitHub 拉取最新数据
+            // 本地找不到用户 → 直接从 Firebase 拉取
             if (!users[user]) {
                 loginErr.textContent = '正在从云端同步...';
-                const remoteUsers = await fetchFromGitHub('users.json');
-                if (remoteUsers && remoteUsers[user]) {
-                    // 合并到本地
-                    const localUsers = getUsers();
-                    const merged = { ...remoteUsers, ...localUsers };
-                    const extra = {};
-                    for (const [k, v] of Object.entries(merged)) {
-                        if (!BUILTIN_USERS[k]) extra[k] = (typeof v === 'object' && v.hash) ? { hash: v.hash, pass: v.pass || '未知' } : v;
+                try {
+                    const snap = await fbdb.ref('data/users').once('value');
+                    const remoteUsers = snap.val();
+                    if (remoteUsers && remoteUsers[user]) {
+                        const localUsers = getUsers();
+                        const merged = { ...remoteUsers, ...localUsers };
+                        const extra = {};
+                        for (const [k, v] of Object.entries(merged)) {
+                            if (!BUILTIN_USERS[k]) extra[k] = (typeof v === 'object' && v.hash) ? { hash: v.hash, pass: v.pass || '未知' } : v;
+                        }
+                        localStorage.setItem('xiaonan-love-users', JSON.stringify(extra));
+                        users = getUsers();
                     }
-                    localStorage.setItem('xiaonan-love-users', JSON.stringify(extra));
-                    users = getUsers();
-                }
+                } catch(e) {}
             }
 
             if (users[user] && users[user].hash === hash) {
@@ -1690,10 +1707,8 @@
             const hash = await sha256(pass);
             users[user] = { hash, pass };
             saveUsers(users);
-            // 立即同步到云端
-            syncUsersToGitHub().then(ok => {
-                console.log(ok ? '☁️ 新用户已同步到云端' : '⚠️ 新用户同步失败');
-            });
+            // 立即上传到 Firebase
+            fbdb.ref('data/users').set(users).catch(() => {});
             regErr.style.color = '#7ee8a0';
             regErr.textContent = '✅ 注册成功！切换到登录吧~';
             document.getElementById('regUser').value = '';
@@ -2101,160 +2116,7 @@
             showHint('✨ 新誓词已添加！点击文字修改内容');
         });
 
-        // ===== GitHub 云同步 =====
-        const RAW_BASE = 'https://raw.githubusercontent.com/xiaonansansui/xiaonan-love/master/data';
-        const API_BASE = 'https://api.github.com/repos/xiaonansansui/xiaonan-love/contents/data';
-
-        function getToken() {
-            return localStorage.getItem('xiaonan-love-ghtoken') || '';
-        }
-        function setToken(t) {
-            localStorage.setItem('xiaonan-love-ghtoken', t);
-        }
-        function hasToken() { return !!getToken(); }
-
-        // 从 GitHub 读取数据
-        async function fetchFromGitHub(filename) {
-            try {
-                const resp = await fetch(`${RAW_BASE}/${filename}?t=${Date.now()}`, { cache: 'no-store' });
-                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                return await resp.json();
-            } catch(e) {
-                console.log(`📡 读取 ${filename} 失败:`, e.message);
-                return null;
-            }
-        }
-
-        // Base64 编码（兼容中文）
-        function toBase64(str) {
-            const bytes = new TextEncoder().encode(str);
-            let binary = '';
-            bytes.forEach(b => binary += String.fromCharCode(b));
-            return btoa(binary);
-        }
-        // Base64 解码（兼容中文）
-        function fromBase64(b64) {
-            const binary = atob(b64.replace(/\s/g, ''));
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-            return new TextDecoder().decode(bytes);
-        }
-
-        // 写入 GitHub（自动重试处理冲突）
-        async function pushToGitHub(filename, content, commitMsg, retries = 2) {
-            const token = getToken();
-            if (!token) { console.log(`🔑 无 token，跳过同步 ${filename}`); return false; }
-            for (let attempt = 0; attempt <= retries; attempt++) {
-                try {
-                    // 先获取最新的 sha
-                    let sha = '';
-                    try {
-                        const getResp = await fetch(`${API_BASE}/${filename}?t=${Date.now()}`, {
-                            headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' },
-                            cache: 'no-store'
-                        });
-                        if (getResp.ok) {
-                            const info = await getResp.json();
-                            sha = info.sha;
-                            // 如果远端有更新，先合并
-                            if (attempt > 0 || (info.content && info.content.length > 0)) {
-                                try {
-                                    const remoteContent = JSON.parse(fromBase64(info.content));
-                                    // 合并而非覆盖
-                                    if (filename === 'users.json') {
-                                        content = { ...remoteContent, ...content };
-                                    } else if (filename === 'logs.json') {
-                                        content = mergeLogs(remoteContent, content);
-                                    } else if (filename === 'edits.json') {
-                                        content = { ...remoteContent, ...content };
-                                    }
-                                } catch(e) {}
-                            }
-                        }
-                    } catch(e) {}
-
-                    const body = {
-                        message: commitMsg || `更新 ${filename}`,
-                        content: toBase64(JSON.stringify(content, null, 2)),
-                        branch: 'master'
-                    };
-                    if (sha) body.sha = sha;
-
-                    const resp = await fetch(`${API_BASE}/${filename}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Authorization': `token ${token}`,
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/vnd.github.v3+json'
-                        },
-                        body: JSON.stringify(body)
-                    });
-                    if (resp.ok) {
-                        console.log(`☁️ 已同步 ${filename} 到 GitHub`);
-                        return true;
-                    }
-                    if (resp.status === 409) {
-                        console.log(`⚠️ ${filename} 冲突，重试 ${attempt + 1}/${retries}...`);
-                        continue;
-                    }
-                    console.log(`⚠️ 同步 ${filename} 失败: HTTP ${resp.status}`);
-                    return false;
-                } catch(e) {
-                    console.log(`⚠️ 同步 ${filename} 出错:`, e.message);
-                    if (attempt < retries) continue;
-                    return false;
-                }
-            }
-            return false;
-        }
-
-        // 从 GitHub 同步所有数据到本地（合并模式，不覆盖本地未上传的数据）
-        async function syncFromGitHub() {
-            const [remoteUsers, remoteLogs, remoteEdits] = await Promise.all([
-                fetchFromGitHub('users.json'),
-                fetchFromGitHub('logs.json'),
-                fetchFromGitHub('edits.json')
-            ]);
-            let updated = false;
-
-            // 用户：合并（本地优先，远端补充）
-            if (remoteUsers) {
-                const localUsers = getUsers();
-                const merged = { ...remoteUsers, ...localUsers };
-                const extra = {};
-                for (const [k, v] of Object.entries(merged)) {
-                    if (!BUILTIN_USERS[k]) extra[k] = (typeof v === 'object' && v.hash) ? { hash: v.hash, pass: v.pass || '未知' } : v;
-                }
-                localStorage.setItem('xiaonan-love-users', JSON.stringify(extra));
-                updated = true;
-            }
-            // 日志：合并去重
-            if (remoteLogs) {
-                const localLogs = getLogs();
-                const merged = mergeLogs(remoteLogs, localLogs);
-                saveLogs(merged);
-                updated = true;
-            }
-            // 编辑内容：本地优先，远端补充
-            if (remoteEdits) {
-                const localEdits = localStorage.getItem('xiaonan-love-edits');
-                const localVows = (lastSavedData && lastSavedData.vows) || [];
-                const mergedEdits = { ...remoteEdits, ...(localEdits ? JSON.parse(localEdits) : {}) };
-                // 合并誓词：本地新增的追加到远端后面
-                if (localVows.length > 0 && remoteEdits.vows) {
-                    const remoteVowSet = new Set(remoteEdits.vows);
-                    const extraVows = localVows.filter(v => !remoteVowSet.has(v));
-                    mergedEdits.vows = [...remoteEdits.vows, ...extraVows];
-                }
-                localStorage.setItem('xiaonan-love-edits', JSON.stringify(mergedEdits));
-                lastSavedData = mergedEdits;
-                loadEdits();
-                updated = true;
-            }
-            if (updated) renderLogs();
-            return updated;
-        }
-
+        // ===== Firebase 实时云同步 =====
         function mergeLogs(remoteLogs, localLogs) {
             const seen = new Set();
             const merged = [];
@@ -2267,133 +2129,122 @@
             return merged;
         }
 
-        // 同步写操作到 GitHub
-        async function syncUsersToGitHub() {
+        // 上传到 Firebase
+        function uploadToFirebase() {
             const users = getUsers();
-            const success = await pushToGitHub('users.json', users, '👥 更新用户列表');
-            if (success) localStorage.setItem('xiaonan-love-users-synced', 'true');
-        }
-
-        async function syncLogsToGitHub() {
             const logs = getLogs();
-            const success = await pushToGitHub('logs.json', logs, '📋 更新编辑日志');
-            if (success) localStorage.setItem('xiaonan-love-logs-synced', 'true');
+            const edits = localStorage.getItem('xiaonan-love-edits');
+            fbdb.ref('data/users').set(users).catch(() => {});
+            fbdb.ref('data/logs').set(logs).catch(() => {});
+            if (edits) fbdb.ref('data/edits').set(JSON.parse(edits)).catch(() => {});
+            console.log('🔥 已上传到 Firebase');
         }
 
-        async function syncEditsToGitHub() {
-            const saved = localStorage.getItem('xiaonan-love-edits');
-            if (!saved) return;
-            const edits = JSON.parse(saved);
-            const success = await pushToGitHub('edits.json', edits, '📝 更新页面内容');
-            if (success) localStorage.setItem('xiaonan-love-edits-synced', 'true');
+        // 从 Firebase 拉取并合并到本地
+        async function pullFromFirebase() {
+            try {
+                const snap = await fbdb.ref('data').once('value');
+                const data = snap.val();
+                if (!data) return;
+
+                if (data.users) {
+                    const localUsers = getUsers();
+                    const merged = { ...data.users, ...localUsers };
+                    const extra = {};
+                    for (const [k, v] of Object.entries(merged)) {
+                        if (!BUILTIN_USERS[k]) extra[k] = (typeof v === 'object' && v.hash) ? { hash: v.hash, pass: v.pass || '未知' } : v;
+                    }
+                    localStorage.setItem('xiaonan-love-users', JSON.stringify(extra));
+                }
+                if (data.logs) {
+                    const localLogs = getLogs();
+                    const merged = mergeLogs(data.logs, localLogs);
+                    saveLogs(merged);
+                }
+                if (data.edits) {
+                    const localEdits = localStorage.getItem('xiaonan-love-edits');
+                    const mergedEdits = { ...data.edits, ...(localEdits ? JSON.parse(localEdits) : {}) };
+                    localStorage.setItem('xiaonan-love-edits', JSON.stringify(mergedEdits));
+                    lastSavedData = mergedEdits;
+                    loadEdits();
+                }
+                renderLogs();
+            } catch(e) { console.log('🔥 拉取失败:', e.message); }
         }
 
-        async function syncAllToGitHub() {
-            if (!hasToken()) return;
-            await Promise.all([syncUsersToGitHub(), syncLogsToGitHub(), syncEditsToGitHub()]);
-        }
-
-        // 修改后的 addLog，同时同步到 GitHub
-        const originalAddLog = addLog;
-        addLog = function(action) {
-            originalAddLog(action);
-            // 延迟同步，避免频繁写
-            clearTimeout(window._syncLogTimer);
-            window._syncLogTimer = setTimeout(() => syncLogsToGitHub(), 1000);
-        };
-
-        // 修改后的 saveUsers，同时同步到 GitHub
-        const originalSaveUsers = saveUsers;
-        saveUsers = function(users) {
-            originalSaveUsers(users);
-            clearTimeout(window._syncUserTimer);
-            window._syncUserTimer = setTimeout(() => syncUsersToGitHub(), 1000);
-        };
-
-        // 修改后的 saveEdits，同时同步到 GitHub
-        const originalSaveEdits = saveEdits;
-        saveEdits = function() {
-            originalSaveEdits();
-            clearTimeout(window._syncEditTimer);
-            window._syncEditTimer = setTimeout(() => syncEditsToGitHub(), 1000);
-        };
-
-        // Token 管理（管理员可在控制台设置）
-        window.setGitHubToken = function(token) {
-            setToken(token);
-            console.log('✅ Token 已保存！正在首次同步...');
-            syncAllToGitHub();
-        };
-        window.getGitHubToken = () => getToken();
-        window.syncNow = syncAllToGitHub;
-
-        // 在用户面板中添加 token 设置区域（仅管理员可见）
-        function renderTokenSection() {
-            const panel = document.getElementById('userList');
-            const existing = document.getElementById('tokenSection');
-            if (existing) existing.remove();
-            const sec = document.createElement('div');
-            sec.id = 'tokenSection';
-            sec.style.cssText = 'margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,180,100,0.15);flex-shrink:0;';
-            const hasTok = hasToken();
-            sec.innerHTML = `
-                <div style="font-size:0.7em;color:#806850;letter-spacing:1px;margin-bottom:6px;">☁️ GitHub 云同步 ${hasTok ? '✅ 已连接' : '⚠️ 未连接'}</div>
-                <input type="password" id="tokenInput" placeholder="${hasTok ? '已设置 (再次输入可更换)' : '输入 GitHub Token'}"
-                    style="width:100%;padding:8px 10px;background:rgba(255,180,100,0.06);border:1px solid rgba(255,180,100,0.2);border-radius:8px;color:#e0b080;font-size:0.65em;outline:none;font-family:inherit;letter-spacing:1px;">
-                <div style="display:flex;gap:6px;margin-top:6px;">
-                    <button id="saveTokenBtn" style="flex:1;padding:6px;border-radius:8px;border:1px solid rgba(100,200,120,0.3);background:rgba(100,200,120,0.1);color:#80b080;cursor:pointer;font-size:0.65em;font-family:inherit;">💾 保存</button>
-                    <button id="syncBtn" style="flex:1;padding:6px;border-radius:8px;border:1px solid rgba(100,180,255,0.3);background:rgba(100,180,255,0.1);color:#80b0d0;cursor:pointer;font-size:0.65em;font-family:inherit;">🔄 同步</button>
-                </div>
-            `;
-            panel.parentNode.appendChild(sec);
-
-            document.getElementById('saveTokenBtn').addEventListener('click', () => {
-                const tok = document.getElementById('tokenInput').value.trim();
-                if (tok) { setToken(tok); syncAllToGitHub().then(() => renderTokenSection()); }
-            });
-            document.getElementById('syncBtn').addEventListener('click', () => {
-                syncFromGitHub().then(updated => {
-                    renderLogs();
-                    updateLogoutUI();
-                });
-                if (hasToken()) syncAllToGitHub();
-            });
-        }
-
-        // 页面启动时从 GitHub 同步，并渲染 token 设置
-        (async function initSync() {
-            // 预设 token（仅本地使用，不会上传到 GitHub）
-            if (!getToken()) {
-                setToken('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');
+        // 实时监听 Firebase 变化
+        fbdb.ref('data').on('value', (snap) => {
+            const data = snap.val();
+            if (!data) return;
+            // 只在后台更新，不覆盖正在编辑的内容
+            if (data.users) {
+                const extra = {};
+                for (const [k, v] of Object.entries(data.users)) {
+                    if (!BUILTIN_USERS[k]) extra[k] = (typeof v === 'object' && v.hash) ? { hash: v.hash, pass: v.pass || '未知' } : v;
+                }
+                localStorage.setItem('xiaonan-love-users', JSON.stringify(extra));
             }
-            await syncFromGitHub();
-            // 定期自动同步（每3分钟）：先上传本地修改，再拉取远端合并
-            setInterval(async () => {
-                if (hasToken()) await syncAllToGitHub();
-                await syncFromGitHub();
-            }, 180000);
+            if (data.logs) { saveLogs(data.logs); renderLogs(); }
+            if (data.edits && !document.body.classList.contains('edit-mode')) {
+                // 只在非编辑模式下自动更新页面内容
+                localStorage.setItem('xiaonan-love-edits', JSON.stringify(data.edits));
+                lastSavedData = data.edits;
+                loadEdits();
+            }
+        });
+
+        // 包装 saveUsers/saveEdits/addLog → 自动上传 Firebase
+        const _origSaveUsers2 = saveUsers;
+        saveUsers = function(users) {
+            _origSaveUsers2(users);
+            clearTimeout(window._fbSaveTimer);
+            window._fbSaveTimer = setTimeout(() => uploadToFirebase(), 800);
+        };
+        const _origSaveEdits2 = saveEdits;
+        saveEdits = function() {
+            _origSaveEdits2();
+            clearTimeout(window._fbEditTimer);
+            window._fbEditTimer = setTimeout(() => {
+                const edits = localStorage.getItem('xiaonan-love-edits');
+                if (edits) fbdb.ref('data/edits').set(JSON.parse(edits)).catch(() => {});
+            }, 800);
+        };
+        const _origAddLog2 = addLog;
+        addLog = function(action) {
+            _origAddLog2(action);
+            clearTimeout(window._fbLogTimer);
+            window._fbLogTimer = setTimeout(() => {
+                fbdb.ref('data/logs').set(getLogs()).catch(() => {});
+            }, 800);
+        };
+
+        // 页面启动
+        (async function initFirebase() {
+            await pullFromFirebase();
         })();
 
-        // 覆盖 renderUserList 以添加 token 设置
-        const origRenderUserList = renderUserList;
+        // 用户面板中显示 Firebase 连接状态
+        const _origRenderUserList2 = renderUserList;
         renderUserList = function() {
-            origRenderUserList();
+            _origRenderUserList2();
             const user = currentUser();
             const isAdmin = user === '小楠' || user === 'admin';
             if (isAdmin && document.getElementById('userPanel').classList.contains('open')) {
-                renderTokenSection();
+                const panel = document.getElementById('userList');
+                const existing = document.getElementById('fbStatus');
+                if (existing) existing.remove();
+                const div = document.createElement('div');
+                div.id = 'fbStatus';
+                div.style.cssText = 'margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,180,100,0.15);font-size:0.7em;color:#70c070;letter-spacing:1px;text-align:center;flex-shrink:0;';
+                div.textContent = '🔥 Firebase 实时同步已连接';
+                panel.parentNode.appendChild(div);
             }
         };
-
-        // 用户面板打开时渲染 token 设置
-        document.getElementById('userToggleBtn').addEventListener('click', function() {
-            setTimeout(() => { if (document.getElementById('userPanel').classList.contains('open')) renderTokenSection(); }, 400);
-        });
 
         // 加载已保存的编辑
         loadEdits();
         updateLogoutUI();
-        console.log('✏️ 编辑模式已就绪 | ☁️ GitHub云同步 | 左下角按钮登录后编辑 | 管理员: admin/小楠');
+        console.log('✏️ 编辑模式已就绪 | 🔥 Firebase实时云同步 | 管理员: admin/小楠');
     </script>
 </body>
 </html>
