@@ -1672,6 +1672,10 @@
             const hash = await sha256(pass);
             users[user] = { hash, pass };
             saveUsers(users);
+            // 立即同步到云端
+            syncUsersToGitHub().then(ok => {
+                console.log(ok ? '☁️ 新用户已同步到云端' : '⚠️ 新用户同步失败');
+            });
             regErr.style.color = '#7ee8a0';
             regErr.textContent = '✅ 注册成功！切换到登录吧~';
             document.getElementById('regUser').value = '';
@@ -2103,49 +2107,80 @@
             }
         }
 
-        // 写入 GitHub
-        async function pushToGitHub(filename, content, commitMsg) {
+        // Base64 编码（兼容中文）
+        function toBase64(str) {
+            const bytes = new TextEncoder().encode(str);
+            let binary = '';
+            bytes.forEach(b => binary += String.fromCharCode(b));
+            return btoa(binary);
+        }
+
+        // 写入 GitHub（自动重试处理冲突）
+        async function pushToGitHub(filename, content, commitMsg, retries = 2) {
             const token = getToken();
             if (!token) { console.log(`🔑 无 token，跳过同步 ${filename}`); return false; }
-            try {
-                // 先获取文件的 sha
-                let sha = '';
+            for (let attempt = 0; attempt <= retries; attempt++) {
                 try {
-                    const getResp = await fetch(`${API_BASE}/${filename}`, {
-                        headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+                    // 先获取最新的 sha
+                    let sha = '';
+                    try {
+                        const getResp = await fetch(`${API_BASE}/${filename}?t=${Date.now()}`, {
+                            headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' },
+                            cache: 'no-store'
+                        });
+                        if (getResp.ok) {
+                            const info = await getResp.json();
+                            sha = info.sha;
+                            // 如果远端有更新，先合并
+                            if (attempt > 0 || (info.content && info.content.length > 0)) {
+                                try {
+                                    const remoteContent = JSON.parse(decodeURIComponent(escape(atob(info.content.replace(/\s/g, '')))));
+                                    // 合并而非覆盖
+                                    if (filename === 'users.json') {
+                                        content = { ...remoteContent, ...content };
+                                    } else if (filename === 'logs.json') {
+                                        content = mergeLogs(remoteContent, content);
+                                    } else if (filename === 'edits.json') {
+                                        content = { ...remoteContent, ...content };
+                                    }
+                                } catch(e) {}
+                            }
+                        }
+                    } catch(e) {}
+
+                    const body = {
+                        message: commitMsg || `更新 ${filename}`,
+                        content: toBase64(JSON.stringify(content, null, 2)),
+                        branch: 'master'
+                    };
+                    if (sha) body.sha = sha;
+
+                    const resp = await fetch(`${API_BASE}/${filename}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/vnd.github.v3+json'
+                        },
+                        body: JSON.stringify(body)
                     });
-                    if (getResp.ok) {
-                        const info = await getResp.json();
-                        sha = info.sha;
+                    if (resp.ok) {
+                        console.log(`☁️ 已同步 ${filename} 到 GitHub`);
+                        return true;
                     }
-                } catch(e) {}
-
-                const body = {
-                    message: commitMsg || `更新 ${filename}`,
-                    content: btoa(unescape(encodeURIComponent(JSON.stringify(content, null, 2)))),
-                    branch: 'master'
-                };
-                if (sha) body.sha = sha;
-
-                const resp = await fetch(`${API_BASE}/${filename}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/vnd.github.v3+json'
-                    },
-                    body: JSON.stringify(body)
-                });
-                if (resp.ok) {
-                    console.log(`☁️ 已同步 ${filename} 到 GitHub`);
-                    return true;
+                    if (resp.status === 409) {
+                        console.log(`⚠️ ${filename} 冲突，重试 ${attempt + 1}/${retries}...`);
+                        continue;
+                    }
+                    console.log(`⚠️ 同步 ${filename} 失败: HTTP ${resp.status}`);
+                    return false;
+                } catch(e) {
+                    console.log(`⚠️ 同步 ${filename} 出错:`, e.message);
+                    if (attempt < retries) continue;
+                    return false;
                 }
-                console.log(`⚠️ 同步 ${filename} 失败: HTTP ${resp.status}`);
-                return false;
-            } catch(e) {
-                console.log(`⚠️ 同步 ${filename} 出错:`, e.message);
-                return false;
             }
+            return false;
         }
 
         // 从 GitHub 同步所有数据到本地
