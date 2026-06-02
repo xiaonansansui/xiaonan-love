@@ -1263,7 +1263,46 @@
         });
 
         loadSong(0);
-        console.log('🎵 小情歌播放器已就绪 | 主打: 偏爱 - 张芸京 | 本地音频 | 空格=播放 ←→=切歌 M=面板');
+
+        // ========== 自动播放 ==========
+        let autoPlayReady = false;
+        let autoPlayAttempted = false;
+
+        async function tryAutoPlay() {
+            if (autoPlayAttempted) return;
+            autoPlayAttempted = true;
+            try {
+                await audio.play();
+                setPlaying(true);
+                musicToggle.classList.add('playing');
+                musicToggle.textContent = '🎵';
+                console.log('🎵 自动播放成功');
+            } catch (e) {
+                console.log('🔇 自动播放被浏览器拦截，等待用户交互...');
+                autoPlayReady = true;
+            }
+        }
+
+        // 页面加载后尝试自动播放
+        setTimeout(() => tryAutoPlay(), 500);
+
+        // 用户第一次交互时尝试播放
+        function onFirstInteraction() {
+            if (autoPlayReady && !isPlaying) {
+                audio.play().then(() => {
+                    setPlaying(true);
+                    musicToggle.classList.add('playing');
+                    musicToggle.textContent = '🎵';
+                    autoPlayReady = false;
+                }).catch(() => {});
+            }
+        }
+
+        document.addEventListener('click', onFirstInteraction, { once: false });
+        document.addEventListener('keydown', onFirstInteraction, { once: false });
+        document.addEventListener('touchstart', onFirstInteraction, { once: false });
+
+        console.log('🎵 小情歌播放器已就绪 | 主打: 偏爱 - 张芸京 | 本地音频 | 自动播放 | 空格=播放 ←→=切歌 M=面板');
 
         // ========== 编辑模式 ==========
         const editToggle = document.getElementById('editToggle');
