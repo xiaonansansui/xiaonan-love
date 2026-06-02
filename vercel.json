@@ -1,0 +1,11 @@
+{
+  "functions": {
+    "api/wechat.js": {
+      "memory": 512,
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    { "source": "/api/wechat", "destination": "/api/wechat" }
+  ]
+}

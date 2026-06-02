@@ -1,0 +1,10 @@
+{
+  "name": "xiaonan-wechat-bot",
+  "version": "1.0.0",
+  "description": "向冰 - 小楠的企业微信AI助手",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "xml2js": "^0.6.2",
+    "@wecom/crypto": "^1.0.1"
+  }
+}
