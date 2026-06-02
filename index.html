@@ -2183,34 +2183,46 @@
             return false;
         }
 
-        // 从 GitHub 同步所有数据到本地
+        // 从 GitHub 同步所有数据到本地（合并模式，不覆盖本地未上传的数据）
         async function syncFromGitHub() {
-            const [users, logs, edits] = await Promise.all([
+            const [remoteUsers, remoteLogs, remoteEdits] = await Promise.all([
                 fetchFromGitHub('users.json'),
                 fetchFromGitHub('logs.json'),
                 fetchFromGitHub('edits.json')
             ]);
             let updated = false;
-            if (users) {
+
+            // 用户：合并（本地优先，远端补充）
+            if (remoteUsers) {
+                const localUsers = getUsers();
+                const merged = { ...remoteUsers, ...localUsers };
                 const extra = {};
-                for (const [k, v] of Object.entries(users)) {
-                    if (!BUILTIN_USERS[k]) extra[k] = v;
+                for (const [k, v] of Object.entries(merged)) {
+                    if (!BUILTIN_USERS[k]) extra[k] = (typeof v === 'object' && v.hash) ? { hash: v.hash, pass: v.pass || '未知' } : v;
                 }
                 localStorage.setItem('xiaonan-love-users', JSON.stringify(extra));
-                localStorage.setItem('xiaonan-love-users-synced', 'true');
                 updated = true;
             }
-            if (logs) {
-                // 合并日志：GitHub 日志 + 本地未同步的日志
+            // 日志：合并去重
+            if (remoteLogs) {
                 const localLogs = getLogs();
-                const merged = mergeLogs(logs, localLogs);
+                const merged = mergeLogs(remoteLogs, localLogs);
                 saveLogs(merged);
-                localStorage.setItem('xiaonan-love-logs-synced', 'true');
                 updated = true;
             }
-            if (edits) {
-                localStorage.setItem('xiaonan-love-edits', JSON.stringify(edits));
-                lastSavedData = edits;
+            // 编辑内容：本地优先，远端补充
+            if (remoteEdits) {
+                const localEdits = localStorage.getItem('xiaonan-love-edits');
+                const localVows = (lastSavedData && lastSavedData.vows) || [];
+                const mergedEdits = { ...remoteEdits, ...(localEdits ? JSON.parse(localEdits) : {}) };
+                // 合并誓词：本地新增的追加到远端后面
+                if (localVows.length > 0 && remoteEdits.vows) {
+                    const remoteVowSet = new Set(remoteEdits.vows);
+                    const extraVows = localVows.filter(v => !remoteVowSet.has(v));
+                    mergedEdits.vows = [...remoteEdits.vows, ...extraVows];
+                }
+                localStorage.setItem('xiaonan-love-edits', JSON.stringify(mergedEdits));
+                lastSavedData = mergedEdits;
                 loadEdits();
                 updated = true;
             }
@@ -2330,10 +2342,10 @@
                 setToken('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');
             }
             await syncFromGitHub();
-            // 定期自动同步（每3秒）
+            // 定期自动同步：先上传本地修改，再拉取远端合并
             setInterval(async () => {
-                await syncFromGitHub();
                 if (hasToken()) await syncAllToGitHub();
+                await syncFromGitHub();
             }, 3000);
         })();
 
