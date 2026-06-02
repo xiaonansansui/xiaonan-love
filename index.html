@@ -2132,6 +2132,13 @@
             bytes.forEach(b => binary += String.fromCharCode(b));
             return btoa(binary);
         }
+        // Base64 解码（兼容中文）
+        function fromBase64(b64) {
+            const binary = atob(b64.replace(/\s/g, ''));
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            return new TextDecoder().decode(bytes);
+        }
 
         // 写入 GitHub（自动重试处理冲突）
         async function pushToGitHub(filename, content, commitMsg, retries = 2) {
@@ -2152,7 +2159,7 @@
                             // 如果远端有更新，先合并
                             if (attempt > 0 || (info.content && info.content.length > 0)) {
                                 try {
-                                    const remoteContent = JSON.parse(decodeURIComponent(escape(atob(info.content.replace(/\s/g, '')))));
+                                    const remoteContent = JSON.parse(fromBase64(info.content));
                                     // 合并而非覆盖
                                     if (filename === 'users.json') {
                                         content = { ...remoteContent, ...content };
