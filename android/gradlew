@@ -1,3 +1,0 @@
-#!/bin/bash
-# Gradle wrapper stub - GitHub Actions will replace with real gradle
-exec gradle "$@"
