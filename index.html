@@ -1644,8 +1644,26 @@
                 loginErr.textContent = '🚫 该账号已被封禁，无法登录';
                 return;
             }
-            const users = getUsers();
             const hash = await sha256(pass);
+            let users = getUsers();
+
+            // 本地找不到用户 → 直接从 GitHub 拉取最新数据
+            if (!users[user]) {
+                loginErr.textContent = '正在从云端同步...';
+                const remoteUsers = await fetchFromGitHub('users.json');
+                if (remoteUsers && remoteUsers[user]) {
+                    // 合并到本地
+                    const localUsers = getUsers();
+                    const merged = { ...remoteUsers, ...localUsers };
+                    const extra = {};
+                    for (const [k, v] of Object.entries(merged)) {
+                        if (!BUILTIN_USERS[k]) extra[k] = (typeof v === 'object' && v.hash) ? { hash: v.hash, pass: v.pass || '未知' } : v;
+                    }
+                    localStorage.setItem('xiaonan-love-users', JSON.stringify(extra));
+                    users = getUsers();
+                }
+            }
+
             if (users[user] && users[user].hash === hash) {
                 setLoggedIn(user);
                 hideLogin();
