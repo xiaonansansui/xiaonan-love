@@ -681,7 +681,7 @@
             -webkit-backdrop-filter: blur(25px);
             border: 1px solid rgba(255, 150, 180, 0.3);
             border-radius: 24px;
-            padding: 40px 36px;
+            padding: 36px 32px;
             text-align: center;
             box-shadow: 0 0 60px rgba(255, 100, 150, 0.2), 0 0 120px rgba(180, 60, 120, 0.1);
             max-width: 380px; width: 90vw;
@@ -690,22 +690,42 @@
         }
         .login-overlay.show .login-box { transform: translateY(0); }
 
-        .login-icon { font-size: 48px; margin-bottom: 12px; }
+        .login-tabs {
+            display: flex; gap: 0; margin-bottom: 22px;
+            border-radius: 14px; overflow: hidden;
+            border: 1px solid rgba(255, 150, 180, 0.2);
+        }
+        .login-tab {
+            flex: 1; padding: 10px;
+            background: rgba(255, 120, 160, 0.05);
+            border: none; color: #a07888;
+            font-size: 0.9em; cursor: pointer;
+            letter-spacing: 2px; transition: all 0.3s;
+            font-family: inherit;
+        }
+        .login-tab.active {
+            background: rgba(255, 120, 160, 0.2);
+            color: #ffb3c6;
+            font-weight: bold;
+        }
+        .login-tab:hover { color: #ffb3c6; }
+
+        .login-icon { font-size: 40px; margin-bottom: 8px; }
         .login-title {
-            font-size: 1.3em; color: #ffb3c6;
+            font-size: 1.2em; color: #ffb3c6;
             letter-spacing: 3px; margin-bottom: 8px;
         }
         .login-subtitle {
-            font-size: 0.8em; color: #a07888;
-            letter-spacing: 1px; margin-bottom: 22px;
+            font-size: 0.78em; color: #a07888;
+            letter-spacing: 1px; margin-bottom: 18px;
         }
         .login-input {
-            width: 100%; padding: 12px 18px;
+            width: 100%; padding: 11px 16px; margin-bottom: 10px;
             background: rgba(255, 120, 160, 0.08);
             border: 1px solid rgba(255, 150, 180, 0.25);
-            border-radius: 14px;
-            color: #ffccd5; font-size: 1em;
-            text-align: center; letter-spacing: 4px;
+            border-radius: 12px;
+            color: #ffccd5; font-size: 0.95em;
+            text-align: center; letter-spacing: 2px;
             outline: none; transition: all 0.3s;
             font-family: inherit;
         }
@@ -718,19 +738,18 @@
             color: rgba(200, 150, 170, 0.4); letter-spacing: 2px;
         }
         .login-err {
-            color: #ff6080; font-size: 0.8em;
-            margin-top: 10px; min-height: 20px;
+            color: #ff6080; font-size: 0.78em;
+            margin-top: 4px; min-height: 18px;
             letter-spacing: 1px;
-            transition: opacity 0.3s;
         }
         .login-btns {
-            display: flex; gap: 12px; margin-top: 18px;
+            display: flex; gap: 10px; margin-top: 14px;
         }
         .login-btn {
             flex: 1; padding: 10px;
-            border-radius: 14px; border: 1px solid rgba(255, 150, 180, 0.25);
+            border-radius: 12px; border: 1px solid rgba(255, 150, 180, 0.25);
             background: rgba(255, 120, 160, 0.1);
-            color: #e0b8c6; font-size: 0.9em;
+            color: #e0b8c6; font-size: 0.88em;
             letter-spacing: 2px; cursor: pointer;
             transition: all 0.3s; font-family: inherit;
         }
@@ -840,14 +859,36 @@
     <!-- 登录弹窗 -->
     <div class="login-overlay" id="loginOverlay">
         <div class="login-box">
-            <div class="login-icon">🔐</div>
-            <div class="login-title">输入密码才能编辑</div>
-            <div class="login-subtitle">这是两个人的秘密花园</div>
-            <input type="password" class="login-input" id="loginInput" placeholder="输入密码" maxlength="20">
-            <div class="login-err" id="loginErr"></div>
-            <div class="login-btns">
-                <button class="login-btn" id="loginCancel">取消</button>
-                <button class="login-btn primary" id="loginConfirm">进入编辑 ✏️</button>
+            <div class="login-tabs">
+                <button class="login-tab active" data-tab="login">🔑 登录</button>
+                <button class="login-tab" data-tab="register">✨ 注册</button>
+            </div>
+            <!-- 登录表单 -->
+            <div id="formLogin">
+                <div class="login-icon">🔐</div>
+                <div class="login-title">欢迎回来</div>
+                <div class="login-subtitle">输入账号密码进入编辑</div>
+                <input type="text" class="login-input" id="loginUser" placeholder="用户名" maxlength="20">
+                <input type="password" class="login-input" id="loginPass" placeholder="密码" maxlength="20">
+                <div class="login-err" id="loginErr"></div>
+                <div class="login-btns">
+                    <button class="login-btn" id="loginCancel">取消</button>
+                    <button class="login-btn primary" id="loginConfirm">登录 ✏️</button>
+                </div>
+            </div>
+            <!-- 注册表单 -->
+            <div id="formRegister" style="display:none;">
+                <div class="login-icon">✨</div>
+                <div class="login-title">注册新账号</div>
+                <div class="login-subtitle">创建一个账号来编辑页面</div>
+                <input type="text" class="login-input" id="regUser" placeholder="用户名" maxlength="20">
+                <input type="password" class="login-input" id="regPass" placeholder="密码" maxlength="20">
+                <input type="password" class="login-input" id="regPass2" placeholder="确认密码" maxlength="20">
+                <div class="login-err" id="regErr"></div>
+                <div class="login-btns">
+                    <button class="login-btn" id="regCancel">取消</button>
+                    <button class="login-btn primary" id="regConfirm">注册 ✨</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1310,19 +1351,37 @@
         const vowsContainer = document.getElementById('vowsContainer');
         const addVowBtn = document.getElementById('addVowBtn');
         const loginOverlay = document.getElementById('loginOverlay');
-        const loginInput = document.getElementById('loginInput');
         const loginErr = document.getElementById('loginErr');
-        const loginConfirm = document.getElementById('loginConfirm');
-        const loginCancel = document.getElementById('loginCancel');
+        const regErr = document.getElementById('regErr');
         const logoutBtn = document.getElementById('logoutBtn');
         let editMode = false;
         let hintTimer = null;
 
-        // 默认密码 SHA-256 哈希："1314"（一生一世）
-        // 想改密码的话，在浏览器控制台运行: changePassword('新密码')
-        let PASSWORD_HASH = '3324dab86f4dcdf48ba8ed6d736dcf050f09a23bf617c7d3579224548269ba1f';
+        // ===== 用户系统 =====
+        // 初始账号（与桌面 密码.txt 同步）
+        const BUILTIN_USERS = {
+            'admin': '3324dab86f4dcdf48ba8ed6d736dcf050f09a23bf617c7d3579224548269ba1f', // 1314
+            '小楠': '6744970e1db4da133f3c43c366fe60265b0aa24a22d1a71adb5bf31b24f9214b', // xiaonan
+        };
 
-        // SHA-256 哈希
+        function getUsers() {
+            const saved = localStorage.getItem('xiaonan-love-users');
+            if (saved) {
+                try { return { ...BUILTIN_USERS, ...JSON.parse(saved) }; }
+                catch(e) { return { ...BUILTIN_USERS }; }
+            }
+            return { ...BUILTIN_USERS };
+        }
+
+        function saveUsers(users) {
+            const extra = {};
+            for (const [k, v] of Object.entries(users)) {
+                if (!BUILTIN_USERS[k]) extra[k] = v;
+            }
+            localStorage.setItem('xiaonan-love-users', JSON.stringify(extra));
+        }
+
+        // SHA-256
         async function sha256(text) {
             const encoder = new TextEncoder();
             const data = encoder.encode(text);
@@ -1331,61 +1390,118 @@
             return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
-        // 修改密码
-        async function changePassword(newPass) {
-            PASSWORD_HASH = await sha256(newPass);
-            localStorage.setItem('xiaonan-love-passhash', PASSWORD_HASH);
-            console.log('✅ 密码已更新！（哈希已保存）');
-        }
-        window.changePassword = changePassword;
-
-        // 加载已保存的密码哈希
-        const savedHash = localStorage.getItem('xiaonan-love-passhash');
-        if (savedHash) PASSWORD_HASH = savedHash;
-
-        // 检查登录状态
+        // 登录状态
         function isLoggedIn() {
             return sessionStorage.getItem('xiaonan-love-auth') === 'true';
         }
-        function setLoggedIn(val) {
-            if (val) sessionStorage.setItem('xiaonan-love-auth', 'true');
-            else sessionStorage.removeItem('xiaonan-love-auth');
+        function currentUser() {
+            return sessionStorage.getItem('xiaonan-love-user') || '';
+        }
+        function setLoggedIn(user) {
+            sessionStorage.setItem('xiaonan-love-auth', 'true');
+            sessionStorage.setItem('xiaonan-love-user', user);
+        }
+        function clearAuth() {
+            sessionStorage.removeItem('xiaonan-love-auth');
+            sessionStorage.removeItem('xiaonan-love-user');
         }
 
-        // 显示登录弹窗
-        function showLogin() {
+        // 弹窗
+        function showLogin(tab = 'login') {
             loginOverlay.classList.add('show');
-            loginInput.value = '';
-            loginErr.textContent = '';
-            setTimeout(() => loginInput.focus(), 300);
+            switchTab(tab);
+            setTimeout(() => {
+                if (tab === 'login') document.getElementById('loginUser').focus();
+                else document.getElementById('regUser').focus();
+            }, 300);
         }
         function hideLogin() {
             loginOverlay.classList.remove('show');
-            loginInput.value = '';
+            document.getElementById('loginUser').value = '';
+            document.getElementById('loginPass').value = '';
+            document.getElementById('regUser').value = '';
+            document.getElementById('regPass').value = '';
+            document.getElementById('regPass2').value = '';
             loginErr.textContent = '';
+            regErr.textContent = '';
         }
 
-        // 登录验证
+        // Tab 切换
+        function switchTab(tab) {
+            document.querySelectorAll('.login-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+            document.getElementById('formLogin').style.display = tab === 'login' ? 'block' : 'none';
+            document.getElementById('formRegister').style.display = tab === 'register' ? 'block' : 'none';
+            loginErr.textContent = '';
+            regErr.textContent = '';
+        }
+        document.querySelectorAll('.login-tab').forEach(t => {
+            t.addEventListener('click', () => switchTab(t.dataset.tab));
+        });
+
+        // 登录
         async function doLogin() {
-            const pass = loginInput.value.trim();
-            if (!pass) { loginErr.textContent = '请输入密码哦~'; return; }
+            const user = document.getElementById('loginUser').value.trim();
+            const pass = document.getElementById('loginPass').value.trim();
+            if (!user) { loginErr.textContent = '请输入用户名'; return; }
+            if (!pass) { loginErr.textContent = '请输入密码'; return; }
+            const users = getUsers();
             const hash = await sha256(pass);
-            if (hash === PASSWORD_HASH) {
-                setLoggedIn(true);
+            if (users[user] && users[user] === hash) {
+                setLoggedIn(user);
                 hideLogin();
                 updateLogoutUI();
                 toggleEditMode(true);
-                showHint('✅ 登录成功！欢迎编辑~');
+                showHint(`✅ 欢迎回来，${user}！`);
             } else {
-                loginErr.textContent = '密码错误，再试一次吧~';
-                loginInput.value = '';
-                loginInput.focus();
+                loginErr.textContent = '用户名或密码错误~';
             }
         }
 
-        // 退出登录
+        // 注册
+        async function doRegister() {
+            const user = document.getElementById('regUser').value.trim();
+            const pass = document.getElementById('regPass').value;
+            const pass2 = document.getElementById('regPass2').value;
+            if (!user) { regErr.textContent = '请输入用户名'; return; }
+            if (user.length < 2) { regErr.textContent = '用户名至少2个字'; return; }
+            if (!pass) { regErr.textContent = '请输入密码'; return; }
+            if (pass.length < 3) { regErr.textContent = '密码至少3位'; return; }
+            if (pass !== pass2) { regErr.textContent = '两次密码不一致'; return; }
+            const users = getUsers();
+            if (users[user]) { regErr.textContent = '该用户名已被注册~'; return; }
+            const hash = await sha256(pass);
+            users[user] = hash;
+            saveUsers(users);
+            regErr.style.color = '#7ee8a0';
+            regErr.textContent = '✅ 注册成功！切换到登录吧~';
+            document.getElementById('regUser').value = '';
+            document.getElementById('regPass').value = '';
+            document.getElementById('regPass2').value = '';
+            setTimeout(() => { regErr.style.color = '#ff6080'; regErr.textContent = ''; switchTab('login'); }, 1500);
+
+            // 尝试导出密码.txt
+            exportPasswordFile();
+        }
+
+        // 导出密码.txt（下载到本地）
+        function exportPasswordFile() {
+            const users = getUsers();
+            let content = '# 情侣网页账号密码\n# 修改后复制到桌面 密码.txt\n';
+            for (const [user, hash] of Object.entries(users)) {
+                content += `${user}:${hash}\n`;
+            }
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = '密码_已更新.txt';
+            document.body.appendChild(a); a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // 退出
         function doLogout() {
-            setLoggedIn(false);
+            clearAuth();
             if (editMode) toggleEditMode(false);
             updateLogoutUI();
             showHint('🔒 已退出登录');
@@ -1393,7 +1509,9 @@
 
         function updateLogoutUI() {
             const logged = isLoggedIn();
+            const user = currentUser();
             logoutBtn.classList.toggle('show', logged);
+            logoutBtn.textContent = logged ? `🔓 ${user} · 退出` : '';
             editToggle.textContent = logged ? '✏️' : '🔒';
         }
 
@@ -1526,10 +1644,15 @@
         });
 
         // 登录弹窗事件
-        loginConfirm.addEventListener('click', () => doLogin());
-        loginCancel.addEventListener('click', hideLogin);
-        loginInput.addEventListener('keydown', (e) => {
+        document.getElementById('loginConfirm').addEventListener('click', () => doLogin());
+        document.getElementById('loginCancel').addEventListener('click', hideLogin);
+        document.getElementById('loginPass').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') doLogin();
+        });
+        document.getElementById('regConfirm').addEventListener('click', () => doRegister());
+        document.getElementById('regCancel').addEventListener('click', hideLogin);
+        document.getElementById('regPass2').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') doRegister();
         });
         loginOverlay.addEventListener('click', (e) => {
             if (e.target === loginOverlay) hideLogin();
